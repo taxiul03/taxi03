@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -52,9 +53,12 @@
 
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
     .modal-box { background: #1e1e1e; width: 100%; max-width: 420px; max-height: 85vh; border-radius: 16px; display: flex; flex-direction: column; border: 1px solid #444; }
-    .modal-header { padding: 16px; font-weight: 800; border-bottom: 1px solid #3d3d3d; display: flex; justify-content: space-between; }
-    .modal-list { overflow-y: auto; padding: 0; }
-    .modal-group { background: #2d2d2d; color: #ffb300; font-size: 11px; font-weight: 800; padding: 8px 14px; text-transform: uppercase; letter-spacing: 1px; position: sticky; top: 0; }
+    .modal-header { padding: 16px; font-weight: 800; border-bottom: 1px solid #3d3d3d; display: flex; justify-content: space-between; align-items: center; }
+    .modal-search { padding: 10px 16px; border-bottom: 1px solid #3d3d3d; background: #2c2c2c; }
+    .modal-search input { width: 100%; height: 40px; background: #1e1e1e; border: 1px solid #444; border-radius: 8px; color: #fff; padding: 0 12px; font-size: 14px; outline: none; }
+    .modal-search input:focus { border-color: #ffb300; }
+    .modal-list { overflow-y: auto; padding: 0; flex-grow: 1; }
+    .modal-group { background: #2d2d2d; color: #ffb300; font-size: 11px; font-weight: 800; padding: 8px 14px; text-transform: uppercase; letter-spacing: 1px; position: sticky; top: 0; z-index: 2;}
     .modal-item { padding: 14px 20px; font-size: 15px; border-bottom: 1px solid #282828; cursor: pointer; color: #ddd; }
     .modal-item:active { background: #3d3d3d; }
     
@@ -120,7 +124,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 016 (30.10.26)</span>
+    <span class="version">Ver. 017 (30.10.26)</span>
   </div>
   
   <div id="debugError"></div>
@@ -132,6 +136,9 @@
       <span>Укажите район</span>
       <span style="cursor:pointer; color:#ffb300;" onclick="closeModal()">✕ ЗАКРЫТЬ</span>
     </div>
+    <div class="modal-search">
+      <input type="text" id="zoneSearchInput" placeholder="🔍 Поиск района (напр. Бурвод)..." autocomplete="off" oninput="filterZones()">
+    </div>
     <div class="modal-list" id="modalList"></div>
   </div>
 </div>
@@ -139,12 +146,17 @@
 <div id="disclaimerModal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-header">
-      <span style="color: #ffb300;">⚠️ Внимание</span>
+      <span style="color: #ffb300;">⚠️ Внимание!</span>
       <span style="cursor:pointer; color:#888;" onclick="closeDisclaimer()">✕ ЗАКРЫТЬ</span>
     </div>
     <div class="disclaimer-text">
-      <p>Данный программный продукт разработан исключительно в ознакомительных целях и для оттачивания навыков программирования. Не является офертой.</p>
-      <p style="margin-top:10px;">Все участники являются добровольными тестировщиками. Точность расчетов гарантируется встроенным матричным алгоритмом.</p>
+      <p>Данный программный продукт разработан исключительно в ознакомительных целях, для оттачивания навыков программирования и не является публичной офертой.</p>
+      <br>
+      <p>Все пользователи приложения являются добровольными тестировщиками.</p>
+      <br>
+      <p>⚠️ Мы не несем ответственности, если вы случайно улетите в космос по тарифу Тулунжи или окажетесь в багажнике за лишние 50 рублей.</p>
+      <br>
+      <p style="text-align: center; color: #ffb300; font-weight: bold;">Автор — молодец.</p>
       <p style="text-align: center; color: #4caf50; font-weight: bold; margin-top: 15px;">Всем ровных дорог и жирных заказов! 🚕💨</p>
     </div>
   </div>
@@ -304,10 +316,78 @@
   }
   loadPrices();
 
+  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 017) ---
   function resolveZoneByText(txt) {
     if (!txt) return null;
     txt = txt.toLowerCase();
 
+    // 1. БУРВОД И ЕГО МИКРОРАЙОНЫ (Учхоз, КПП, Ургаса)
+    const burvodKeywords = [
+        "бурвод", "ваи", "мерецков", "кабанск", "автомагистральн", "обручев", 
+        "республиканск", "подстанцион", "донск", "соловьин", "толстихин", 
+        "урожайн", "заречн", "степн", "кубанск", "российск", "современников", 
+        "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", 
+        "просёлочн", "сельск", "баргузинский пер", "строител", "лощенков", 
+        "турецк", "белокамен", "слободск", "тепличн", "курск", "измайловск", 
+        "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", 
+        "голубичн", "независим", "лиговск", "ледов", "тулунжинский пер", "рукавишников", "учебн"
+    ];
+    if (burvodKeywords.some(kw => txt.includes(kw))) return getZone("burvod");
+    
+    // Спорные улицы Бурвода (нумерация важна)
+    if (txt.includes("баргузинск") && (txt.includes("учхоз") || txt.includes("бурвод"))) return getZone("burvod");
+    if (txt.includes("светл") && (txt.includes("бурвод") || txt.includes("ургаса") || txt.includes("учхоз"))) return getZone("burvod");
+    if (txt.includes("дорожн") && (txt.includes("бурвод") || txt.includes("учхоз"))) return getZone("burvod");
+
+    // СНТ и ДНТ Бурвода
+    if (txt.includes("урожай") || txt.includes("чайка")) return getZone("urozhay");
+    if (txt.includes("профсоюзник")) return getZone("burvod"); // Вся сетка линий
+    if (txt.includes("оазис плюс") || txt.includes("ургаса")) return getZone("burvod");
+
+    // Ориентиры Бурвода
+    if (txt.includes("лицей 61") || txt.includes("школа 44") || txt.includes("поликлиника 1") || txt.includes("забайкалспецодежда") || txt.includes("азиятрак") || txt.includes("регион03")) return getZone("burvod");
+
+    // 2. ТУЛУНЖА И МИКРОРАЙОНЫ (СНТ Современник, Нижняя/Новая Тулунжа)
+    const tulunzhaKeywords = [
+        "тулунж", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", 
+        "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", 
+        "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", 
+        "ноябрьск", "осенн", "трудов", "юбилейн", "полянск", "радужн", "крылат", 
+        "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", 
+        "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", 
+        "владивостокск", "хабаровск", "благовещенск", "якутск", "читинск", 
+        "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск"
+    ];
+    if (tulunzhaKeywords.some(kw => txt.includes(kw))) return getZone("tulunzha");
+
+    // Спорные улицы Тулунжи
+    if (txt.includes("можайск") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("подгорн") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("орлин") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("лугов") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("акшинск") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("дамбов") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("40 лет победы") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("гэгэтуйск") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("песочн") && txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("мраморн") && txt.includes("тулунж")) return getZone("tulunzha");
+    
+    if (txt.includes("эковата байкал") || txt.includes("магазин ирис")) return getZone("tulunzha");
+
+    // 3. СНТ СУРАНЗАН
+    const suranzanKeywords = [
+        "суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"
+    ];
+    if (suranzanKeywords.some(kw => txt.includes(kw)) && (txt.includes("снт") || txt.includes("суранзан") || txt.includes("иволгинский"))) return getZone("suranzan");
+
+    // 4. ГУРУЛЬБА (включая ДНТ Мир, Гурульба, Селенга Тур)
+    const gurulbaKeywords = [
+        "гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", 
+        "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов"
+    ];
+    if (gurulbaKeywords.some(kw => txt.includes(kw))) return getZone("gurulba");
+
+    // 5. ОСТАЛЬНЫЕ ПРОВЕРКИ (Из предыдущих версий)
     if (txt.includes("сотников")) {
       if (txt.includes("полян")) return getZone("sotnikovo_polyana");
       if (txt.includes("родник") || txt.includes("большая полян")) return getZone("sotnikovo_rodniki");
@@ -319,24 +399,18 @@
     }
     if (txt.includes("посель")) return getZone("poselye_rosneft"); 
     if (txt.includes("исток")) return txt.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko");
-    if (txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("гурульб")) return getZone("gurulba");
     if (txt.includes("солдатск")) return getZone("soldatskiy");
     if (txt.includes("аэропорт")) return getZone("aeroport");
     if (txt.includes("нурселени")) return getZone("nurselenie");
     if (txt.includes("иволгинск")) return getZone("ivolginsk");
 
-    if (txt.includes("урожай")) return getZone("urozhay");
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return getZone("dnt_vesna_etc");
     if (txt.includes("сибиряк") || txt.includes("стимул")) return getZone("sibiryak_stimul");
     if (txt.includes("дулан") || txt.includes("комсомольский")) return getZone("dulan_ostrov");
     if (txt.includes("черемушки")) return getZone("cheremushki");
-    if (txt.includes("учхоз")) return getZone("uchhoz");
     if (txt.includes("левый берег")) return getZone("leviy_bereg");
-    if (txt.includes("суранзан")) return getZone("suranzan");
     if (txt.includes("мир")) return getZone("mir");
-    if (txt.includes("бурвод") || txt.includes("ваи") || txt.includes("мерецков") || txt.includes("кабанск") || txt.includes("автомагистральн")) return getZone("burvod");
-
+    
     if (txt.includes("140") || txt.includes("142")) return getZone("140_140a_kv");
     if (txt.includes("102") || txt.includes("103") || txt.includes("104")) return getZone("102_104_kv");
     if (txt.includes("105") || txt.includes("106")) return getZone("105_106_kv");
@@ -356,6 +430,7 @@
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return getZone("resp_bolnitsa");
     if (txt.includes("трубачеев") || txt.includes("широких")) return getZone("trubacheeva_do_mason");
 
+    // Городские спорные улицы
     if (txt.includes("баргузинск") && txt.includes("октябрьск")) return getZone("tsk_fabrika");
     if (txt.includes("можайск") && txt.includes("железнодорожн")) return getZone("mashzavod");
 
@@ -408,6 +483,7 @@
                 if (zone) { 
                   setZone(type, zone); 
                 } else { 
+                  // Если зона не определилась, открываем модалку с предзаполненным поиском
                   openModal(type); 
                 }
               };
@@ -445,13 +521,37 @@
   }
 
   let modalTarget = null;
+  
   function openModal(target) {
     modalTarget = target;
+    document.getElementById('zoneSearchInput').value = '';
+    renderModalList('');
+    document.getElementById('modal').style.display = 'flex';
+  }
+
+  function closeModal() { 
+      document.getElementById('modal').style.display = 'none'; 
+  }
+
+  function filterZones() {
+    const query = document.getElementById('zoneSearchInput').value.toLowerCase();
+    renderModalList(query);
+  }
+
+  function renderModalList(filterQuery) {
     const l = document.getElementById('modalList');
     l.innerHTML = '';
     
     let currentGroup = '';
+    let hasResults = false;
+
     ZONES.forEach(z => {
+      if (filterQuery && !z.name.toLowerCase().includes(filterQuery) && !z.group.toLowerCase().includes(filterQuery)) {
+        return; // Пропускаем, если не подходит под поиск
+      }
+      
+      hasResults = true;
+
       if (z.group !== currentGroup) {
         currentGroup = z.group;
         const header = document.createElement('div');
@@ -460,13 +560,16 @@
         l.appendChild(header);
       }
       const d = document.createElement('div');
-      d.className = 'modal-item'; d.innerText = z.name;
+      d.className = 'modal-item'; 
+      d.innerText = z.name;
       d.onclick = () => { setZone(modalTarget, z); closeModal(); };
       l.appendChild(d);
     });
-    document.getElementById('modal').style.display = 'flex';
+
+    if (!hasResults) {
+        l.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Район не найден</div>';
+    }
   }
-  function closeModal() { document.getElementById('modal').style.display = 'none'; }
 
   function openDisclaimer() { document.getElementById('disclaimerModal').style.display = 'flex'; }
   function closeDisclaimer() { document.getElementById('disclaimerModal').style.display = 'none'; }
