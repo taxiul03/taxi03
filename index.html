@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -124,7 +123,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 017 (30.10.26)</span>
+    <span class="version">Ver. 018 (30.10.26)</span>
   </div>
   
   <div id="debugError"></div>
@@ -316,78 +315,58 @@
   }
   loadPrices();
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 017) ---
+  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 018) ---
   function resolveZoneByText(txt) {
     if (!txt) return null;
     txt = txt.toLowerCase();
 
-    // 1. БУРВОД И ЕГО МИКРОРАЙОНЫ (Учхоз, КПП, Ургаса)
-    const burvodKeywords = [
-        "бурвод", "ваи", "мерецков", "кабанск", "автомагистральн", "обручев", 
-        "республиканск", "подстанцион", "донск", "соловьин", "толстихин", 
-        "урожайн", "заречн", "степн", "кубанск", "российск", "современников", 
-        "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", 
-        "просёлочн", "сельск", "баргузинский пер", "строител", "лощенков", 
-        "турецк", "белокамен", "слободск", "тепличн", "курск", "измайловск", 
-        "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", 
-        "голубичн", "независим", "лиговск", "ледов", "тулунжинский пер", "рукавишников", "учебн"
-    ];
-    if (burvodKeywords.some(kw => txt.includes(kw))) return getZone("burvod");
+    // 1. ИЗВЛЕКАЕМ НОМЕР ДОМА (DaData возвращает в формате "... д 25" или "... дом 25")
+    let match = txt.match(/д\s*(\d+)/i) || txt.match(/(\d+)/);
+    let h = match ? parseInt(match[1], 10) : 0;
+
+    // --- 2. ЖЕСТКАЯ ПРИВЯЗКА СПОРНЫХ УЛИЦ ПО ДИАПАЗОНАМ ДОМОВ ---
+    if (txt.includes("баргузинск")) {
+      if (h > 0 && h <= 82) return getZone("burvod"); // Учхоз (Бурвод)
+      if (h > 82) return getZone("tsk_fabrika"); // Октябрьский (Город)
+      return null; // Если просто ввели улицу, оставляем для ручного выбора
+    }
     
-    // Спорные улицы Бурвода (нумерация важна)
-    if (txt.includes("баргузинск") && (txt.includes("учхоз") || txt.includes("бурвод"))) return getZone("burvod");
-    if (txt.includes("светл") && (txt.includes("бурвод") || txt.includes("ургаса") || txt.includes("учхоз"))) return getZone("burvod");
-    if (txt.includes("дорожн") && (txt.includes("бурвод") || txt.includes("учхоз"))) return getZone("burvod");
+    if (txt.includes("можайск")) {
+      if (h > 0 && h <= 38) return getZone("tulunzha"); // Тулунжа
+      if (h > 38) return getZone("mashzavod"); // Железнодорожный
+      return null;
+    }
 
-    // СНТ и ДНТ Бурвода
-    if (txt.includes("урожай") || txt.includes("чайка")) return getZone("urozhay");
-    if (txt.includes("профсоюзник")) return getZone("burvod"); // Вся сетка линий
-    if (txt.includes("оазис плюс") || txt.includes("ургаса")) return getZone("burvod");
-
-    // Ориентиры Бурвода
-    if (txt.includes("лицей 61") || txt.includes("школа 44") || txt.includes("поликлиника 1") || txt.includes("забайкалспецодежда") || txt.includes("азиятрак") || txt.includes("регион03")) return getZone("burvod");
-
-    // 2. ТУЛУНЖА И МИКРОРАЙОНЫ (СНТ Современник, Нижняя/Новая Тулунжа)
-    const tulunzhaKeywords = [
-        "тулунж", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", 
-        "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", 
-        "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", 
-        "ноябрьск", "осенн", "трудов", "юбилейн", "полянск", "радужн", "крылат", 
-        "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", 
-        "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", 
-        "владивостокск", "хабаровск", "благовещенск", "якутск", "читинск", 
-        "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск"
-    ];
-    if (tulunzhaKeywords.some(kw => txt.includes(kw))) return getZone("tulunzha");
+    if (txt.includes("светл")) {
+      if (h > 0 && h <= 54) return getZone("burvod"); // КПП / Учхоз
+      return null;
+    }
 
     // Спорные улицы Тулунжи
-    if (txt.includes("можайск") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("подгорн") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("орлин") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("лугов") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("акшинск") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("дамбов") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("40 лет победы") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("гэгэтуйск") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("песочн") && txt.includes("тулунж")) return getZone("tulunzha");
-    if (txt.includes("мраморн") && txt.includes("тулунж")) return getZone("tulunzha");
-    
-    if (txt.includes("эковата байкал") || txt.includes("магазин ирис")) return getZone("tulunzha");
+    if (txt.includes("лугов")) { if (h > 0 && h <= 24) return getZone("tulunzha"); }
+    if (txt.includes("акшинск")) { if (h > 0 && h <= 28) return getZone("tulunzha"); }
+    if (txt.includes("подгорн")) { if (h > 0 && h <= 34) return getZone("tulunzha"); }
+    if (txt.includes("орлин")) { if (h > 0 && h <= 22) return getZone("tulunzha"); }
+    if (txt.includes("дамбов")) { if (h > 0 && h <= 17) return getZone("tulunzha"); }
+    if (txt.includes("40 лет победы")) { if (h > 0 && h <= 26) return getZone("tulunzha"); }
+    if (txt.includes("гэгэтуйск")) { if (h > 0 && h <= 31) return getZone("tulunzha"); }
+    if (txt.includes("песочн")) { if (h > 0 && h <= 115) return getZone("tulunzha"); }
+    if (txt.includes("мраморн")) { if (h > 0 && h <= 56) return getZone("tulunzha"); }
 
-    // 3. СНТ СУРАНЗАН
-    const suranzanKeywords = [
-        "суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"
-    ];
-    if (suranzanKeywords.some(kw => txt.includes(kw)) && (txt.includes("снт") || txt.includes("суранзан") || txt.includes("иволгинский"))) return getZone("suranzan");
+    // --- 3. БАЗЫ УНИКАЛЬНЫХ УЛИЦ И ОРИЕНТИРОВ ---
+    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "заречн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "тепличн", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03"];
+    if (burvodKWs.some(kw => txt.includes(kw))) return getZone("burvod");
 
-    // 4. ГУРУЛЬБА (включая ДНТ Мир, Гурульба, Селенга Тур)
-    const gurulbaKeywords = [
-        "гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", 
-        "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов"
-    ];
-    if (gurulbaKeywords.some(kw => txt.includes(kw))) return getZone("gurulba");
+    const tulunzhaKWs = ["делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "осенн", "трудов", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "якутск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
+    if (tulunzhaKWs.some(kw => txt.includes(kw))) return getZone("tulunzha");
 
-    // 5. ОСТАЛЬНЫЕ ПРОВЕРКИ (Из предыдущих версий)
+    const suranzanKWs = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
+    if (suranzanKWs.some(kw => txt.includes(kw))) return getZone("suranzan");
+
+    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов"];
+    if (gurulbaKWs.some(kw => txt.includes(kw))) return getZone("gurulba");
+
+    // --- 4. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ ---
     if (txt.includes("сотников")) {
       if (txt.includes("полян")) return getZone("sotnikovo_polyana");
       if (txt.includes("родник") || txt.includes("большая полян")) return getZone("sotnikovo_rodniki");
@@ -429,10 +408,6 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return getZone("vokzal");
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return getZone("resp_bolnitsa");
     if (txt.includes("трубачеев") || txt.includes("широких")) return getZone("trubacheeva_do_mason");
-
-    // Городские спорные улицы
-    if (txt.includes("баргузинск") && txt.includes("октябрьск")) return getZone("tsk_fabrika");
-    if (txt.includes("можайск") && txt.includes("железнодорожн")) return getZone("mashzavod");
 
     return null; 
   }
@@ -483,7 +458,6 @@
                 if (zone) { 
                   setZone(type, zone); 
                 } else { 
-                  // Если зона не определилась, открываем модалку с предзаполненным поиском
                   openModal(type); 
                 }
               };
@@ -547,7 +521,7 @@
 
     ZONES.forEach(z => {
       if (filterQuery && !z.name.toLowerCase().includes(filterQuery) && !z.group.toLowerCase().includes(filterQuery)) {
-        return; // Пропускаем, если не подходит под поиск
+        return; 
       }
       
       hasResults = true;
