@@ -123,7 +123,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 018 (30.10.26)</span>
+    <span class="version">Ver. 019 (30.10.26)</span>
   </div>
   
   <div id="debugError"></div>
@@ -315,30 +315,53 @@
   }
   loadPrices();
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 018) ---
-  function resolveZoneByText(txt) {
+  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 019) ---
+  function resolveZoneByText(txt, fullAddress = "") {
     if (!txt) return null;
     txt = txt.toLowerCase();
+    fullAddress = fullAddress.toLowerCase();
+    
+    // --- ПЕРЕХВАТЧИК МИКРОРАЙОНОВ ПЕРЕД УЛИЦАМИ (ПРИОРИТЕТ 1) ---
+    // Если DaData вернула в адресе привязку к району/поселку, мы доверяем ей в первую очередь
+    if (fullAddress.includes("сотников")) {
+      if (fullAddress.includes("полян")) return getZone("sotnikovo_polyana");
+      if (fullAddress.includes("родник") || fullAddress.includes("большая полян")) return getZone("sotnikovo_rodniki");
+      if (fullAddress.includes("гибдд") || fullAddress.includes("здоровье") || fullAddress.includes("колобк")) return getZone("sotnikovo_gibdd");
+      if (fullAddress.includes("церков") || fullAddress.includes("тухачевск") || fullAddress.includes("промышлен")) return getZone("sotnikovo_tserkov");
+      if (fullAddress.includes("багульник") || fullAddress.includes("овощевод") || fullAddress.includes("созвезди")) return getZone("sotnikovo_bagulnik");
+      if (fullAddress.includes("титан") || fullAddress.includes("респект")) return getZone("sotnikovo_titan");
+      return getZone("sotnikovo_selenge");
+    }
+    
+    if (fullAddress.includes("посель")) return getZone("poselye_rosneft"); 
+    if (fullAddress.includes("исток")) return fullAddress.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko");
+    if (fullAddress.includes("тулунж")) return getZone("tulunzha");
+    if (fullAddress.includes("гурульб")) return getZone("gurulba");
+    if (fullAddress.includes("солдатск")) return getZone("soldatskiy");
+    if (fullAddress.includes("аэропорт")) return getZone("aeroport");
+    if (fullAddress.includes("нурселени")) return getZone("nurselenie");
+    if (fullAddress.includes("иволгинск")) return getZone("ivolginsk");
+    if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return getZone("mashzavod");
 
-    // 1. ИЗВЛЕКАЕМ НОМЕР ДОМА (DaData возвращает в формате "... д 25" или "... дом 25")
-    let match = txt.match(/д\s*(\d+)/i) || txt.match(/(\d+)/);
+    // --- 1. ИЗВЛЕКАЕМ НОМЕР ДОМА ---
+    let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
     // --- 2. ЖЕСТКАЯ ПРИВЯЗКА СПОРНЫХ УЛИЦ ПО ДИАПАЗОНАМ ДОМОВ ---
     if (txt.includes("баргузинск")) {
-      if (h > 0 && h <= 82) return getZone("burvod"); // Учхоз (Бурвод)
-      if (h > 82) return getZone("tsk_fabrika"); // Октябрьский (Город)
-      return null; // Если просто ввели улицу, оставляем для ручного выбора
+      if (h > 0 && h <= 82) return getZone("burvod"); 
+      if (h > 82) return getZone("tsk_fabrika"); 
+      return null;
     }
     
     if (txt.includes("можайск")) {
-      if (h > 0 && h <= 38) return getZone("tulunzha"); // Тулунжа
-      if (h > 38) return getZone("mashzavod"); // Железнодорожный
+      if (h > 0 && h <= 38) return getZone("tulunzha"); 
+      if (h > 38) return getZone("mashzavod"); 
       return null;
     }
 
     if (txt.includes("светл")) {
-      if (h > 0 && h <= 54) return getZone("burvod"); // КПП / Учхоз
+      if (h > 0 && h <= 54) return getZone("burvod"); 
       return null;
     }
 
@@ -367,22 +390,6 @@
     if (gurulbaKWs.some(kw => txt.includes(kw))) return getZone("gurulba");
 
     // --- 4. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ ---
-    if (txt.includes("сотников")) {
-      if (txt.includes("полян")) return getZone("sotnikovo_polyana");
-      if (txt.includes("родник") || txt.includes("большая полян")) return getZone("sotnikovo_rodniki");
-      if (txt.includes("гибдд") || txt.includes("здоровье") || txt.includes("колобк")) return getZone("sotnikovo_gibdd");
-      if (txt.includes("церков") || txt.includes("тухачевск") || txt.includes("промышлен")) return getZone("sotnikovo_tserkov");
-      if (txt.includes("багульник") || txt.includes("овощевод") || txt.includes("созвезди")) return getZone("sotnikovo_bagulnik");
-      if (txt.includes("титан") || txt.includes("респект")) return getZone("sotnikovo_titan");
-      return getZone("sotnikovo_selenge");
-    }
-    if (txt.includes("посель")) return getZone("poselye_rosneft"); 
-    if (txt.includes("исток")) return txt.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko");
-    if (txt.includes("солдатск")) return getZone("soldatskiy");
-    if (txt.includes("аэропорт")) return getZone("aeroport");
-    if (txt.includes("нурселени")) return getZone("nurselenie");
-    if (txt.includes("иволгинск")) return getZone("ivolginsk");
-
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return getZone("dnt_vesna_etc");
     if (txt.includes("сибиряк") || txt.includes("стимул")) return getZone("sibiryak_stimul");
     if (txt.includes("дулан") || txt.includes("комсомольский")) return getZone("dulan_ostrov");
@@ -401,7 +408,7 @@
 
     if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов") || txt.includes("жуковск")) return getZone("shishkovka");
     if (txt.includes("пвз") || txt.includes("комсомольск") || txt.includes("чайковск")) return getZone("pvz");
-    if (txt.includes("загорск") || txt.includes("машзавод") || txt.includes("гастелло")) return getZone("mashzavod");
+    if (txt.includes("гастелло")) return getZone("mashzavod");
     if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return getZone("vostochniy");
     if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ") || txt.includes("борсоев")) return getZone("pl_sovetov");
     if (txt.includes("рынок") || txt.includes("свердлов") || txt.includes("банзаров") || txt.includes("куйбышев")) return getZone("centr_rynok");
@@ -443,9 +450,12 @@
               const div = document.createElement('div');
               div.className = 'suggestion-item';
               
+              // Получаем полный адрес из DaData
+              const fullAddressString = item.unrestricted_value || item.value;
               const district = item.data?.city_district || item.data?.settlement_with_type || '';
-              const searchString = item.value + " " + district;
-              const zone = resolveZoneByText(searchString);
+              
+              // Передаем и короткое название, и полный адрес для надежного анализа
+              const zone = resolveZoneByText(item.value, fullAddressString);
               
               const zoneHtml = zone ? `<br><span style="color:#ffb300; font-size:12px; font-weight:700;">(${zone.name})</span>` : `<br><span style="color:#ef5350; font-size:12px;">(Нажмите, чтобы выбрать район)</span>`;
 
