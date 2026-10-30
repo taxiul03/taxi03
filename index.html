@@ -50,7 +50,7 @@
     .modifiers-list { font-size: 12px; color: #ffb300; font-weight: 600; }
     .error-msg { font-size: 14px; font-weight: 600; color: #ef5350; line-height: 1.4; }
 
-    #map { width: 100%; height: 200px; border-radius: 14px; border: 1px solid #444; margin-bottom: 14px; background: #222; }
+    #map { width: 100%; height: 200px; border-radius: 14px; border: 1px solid #444; margin-bottom: 14px; background: #222; display: none; }
 
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
     .modal-box { background: #1e1e1e; width: 100%; max-width: 420px; max-height: 85vh; border-radius: 16px; display: flex; flex-direction: column; border: 1px solid #444; }
@@ -70,9 +70,6 @@
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
   </style>
-
-  <!-- Скрипт Яндекса -->
-  <script src="https://api-maps.yandex.ru/2.1/?apikey=2543bc4f-8c11-4e91-9c3a-8cf9a7b5753f&lang=ru_RU" type="text/javascript"></script>
 </head>
 <body>
 
@@ -128,14 +125,14 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 013</span>
+    <!-- ВЕРСИЯ С ДАТОЙ -->
+    <span class="version">Ver. 014 (30.10.26)</span>
   </div>
   
-  <!-- Скрытый блок для перехвата ошибок, чтобы мы точно знали, если что-то сломается -->
+  <!-- Блок ошибок -->
   <div id="debugError"></div>
 </div>
 
-<!-- Модальные окна -->
 <div id="modal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-header">
@@ -161,12 +158,13 @@
 </div>
 
 <script>
-  // Глобальный перехватчик ошибок (выведет ошибку на экран красным внизу)
+  // Глобальный перехватчик ошибок браузера
   window.addEventListener('error', function(event) {
-    document.getElementById('debugError').innerText += " Сбой: " + event.message;
+    document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
+  const YANDEX_API_KEY = "2543bc4f-8c11-4e91-9c3a-8cf9a7b5753f";
 
   const ZONES = [
     { id: "tulunzha", name: "Тулунжа", group: "ТУЛУНЖА И СОСЕДИ" },
@@ -277,7 +275,7 @@
   let myMap = null;
   let mapPoints = { from: null, to: null };
 
-  // 1. БЕЗОПАСНАЯ ЗАГРУЗКА ТАРИФОВ (РАБОТАЕТ ВСЕГДА)
+  // 1. ЗАГРУЗКА ТАРИФОВ - ЗАПУСКАЕТСЯ СРАЗУ, НЕ ЖДЕТ КАРТУ!
   async function loadPrices() {
     const status = document.getElementById('statusText');
     try {
@@ -310,39 +308,42 @@
       status.innerText = "База тарифов обновлена ✅";
       status.style.color = "#4caf50";
     } catch(e) {
-      status.innerText = "Сбой прайса. Работает оффлайн-режим ⚡";
-      status.style.color = "#ffb300";
-      document.getElementById('debugError').innerText += " Ошибка CSV: " + e.message;
+      status.innerText = "Ошибка прайса. Покажите это Админу ⚡";
+      status.style.color = "#ef5350";
+      document.getElementById('debugError').innerText += " Ошибка базы: " + e.message + ". ";
     }
   }
+  // Мгновенный запуск тарифов
+  loadPrices();
 
-  // 2. БЕЗОПАСНАЯ ЗАГРУЗКА КАРТ (НЕ РОНЯЕТ КАЛЬКУЛЯТОР ПРИ СБОЕ)
-  window.onload = () => {
-    // Тарифы грузим сразу
-    loadPrices();
-
-    // Проверяем, жив ли Яндекс
-    if (typeof ymaps !== 'undefined') {
-      ymaps.ready(() => {
-        try {
-          myMap = new ymaps.Map("map", {
-            center: [51.834, 107.584],
-            zoom: 11,
-            controls: ['zoomControl']
-          });
-          initSuggest('from');
-          initSuggest('to');
-        } catch(err) {
-          document.getElementById('debugError').innerText += " Ошибка отрисовки карты: " + err.message;
-        }
+  // 2. ДИНАМИЧЕСКАЯ ЗАГРУЗКА ЯНДЕКСА (НЕ БЛОКИРУЕТ САЙТ ПРИ ОШИБКЕ)
+  window.initYandexMap = function() {
+    try {
+      document.getElementById('map').style.display = 'block'; // Показываем блок карты
+      myMap = new ymaps.Map("map", {
+        center: [51.834, 107.584],
+        zoom: 11,
+        controls: ['zoomControl']
       });
-    } else {
+      initSuggest('from');
+      initSuggest('to');
+    } catch(err) {
       document.getElementById('map').style.display = 'none';
-      document.getElementById('debugError').innerText += " Яндекс Карты заблокированы вашим браузером.";
+      document.getElementById('debugError').innerText += " Сбой карты Яндекса: " + err.message + ". ";
     }
   };
 
-  // 3. ПОДСКАЗКИ ЯНДЕКСА
+  // Создаем скрипт Яндекса "на лету"
+  const yaScript = document.createElement('script');
+  yaScript.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_API_KEY}&lang=ru_RU&onload=initYandexMap`;
+  yaScript.async = true;
+  yaScript.onerror = function() {
+    document.getElementById('debugError').innerText += " Доступ к Яндекс API заблокирован браузером или ключом. ";
+  };
+  document.head.appendChild(yaScript);
+
+
+  // 3. ПОДСКАЗКИ ЯНДЕКСА И АЛГОРИТМ РАСПОЗНАВАНИЯ
   function initSuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -373,18 +374,14 @@
           div.onclick = () => {
             input.value = cleanAddr;
             list.style.display = 'none';
-            if (zone) {
-              setZone(type, zone);
-            } else {
-              openModal(type);
-            }
+            if (zone) { setZone(type, zone); } else { openModal(type); }
             geocodeAndMark(type, item.value);
           };
           list.appendChild(div);
         });
         list.style.display = 'block';
       }).catch(err => {
-         document.getElementById('debugError').innerText += " Ошибка поиска: " + err.message;
+         document.getElementById('debugError').innerText += " Ошибка поиска: " + err.message + ". ";
       });
     });
   }
@@ -407,7 +404,6 @@
     });
   }
 
-  // 4. УМНЫЙ АЛГОРИТМ РАСПРЕДЕЛЕНИЯ ЗОН (С ЗАЩИТОЙ ОТ ОШИБОК)
   function resolveZoneByText(txt) {
     if (!txt) return null;
     txt = txt.toLowerCase();
@@ -419,4 +415,143 @@
       if (txt.includes("церков") || txt.includes("тухачевск") || txt.includes("промышлен")) return getZone("sotnikovo_tserkov");
       if (txt.includes("багульник") || txt.includes("овощевод") || txt.includes("созвезди")) return getZone("sotnikovo_bagulnik");
       if (txt.includes("титан") || txt.includes("респект")) return getZone("sotnikovo_titan");
-      return getZone("sotnikovo_
+      return getZone("sotnikovo_selenge");
+    }
+    if (txt.includes("посель")) return getZone("poselye_rosneft"); 
+    if (txt.includes("исток")) return txt.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko");
+    if (txt.includes("тулунж")) return getZone("tulunzha");
+    if (txt.includes("гурульб")) return getZone("gurulba");
+    if (txt.includes("солдатск")) return getZone("soldatskiy");
+    if (txt.includes("аэропорт")) return getZone("aeroport");
+    if (txt.includes("нурселени")) return getZone("nurselenie");
+    if (txt.includes("иволгинск")) return getZone("ivolginsk");
+
+    if (txt.includes("урожай")) return getZone("urozhay");
+    if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return getZone("dnt_vesna_etc");
+    if (txt.includes("сибиряк") || txt.includes("стимул")) return getZone("sibiryak_stimul");
+    if (txt.includes("дулан") || txt.includes("комсомольский")) return getZone("dulan_ostrov");
+    if (txt.includes("черемушки")) return getZone("cheremushki");
+    if (txt.includes("учхоз")) return getZone("uchhoz");
+    if (txt.includes("левый берег")) return getZone("leviy_bereg");
+    if (txt.includes("суранзан")) return getZone("suranzan");
+    if (txt.includes("мир")) return getZone("mir");
+    if (txt.includes("бурвод") || txt.includes("ваи") || txt.includes("мерецков") || txt.includes("кабанск") || txt.includes("автомагистральн")) return getZone("burvod");
+
+    if (txt.includes("140") || txt.includes("142")) return getZone("140_140a_kv");
+    if (txt.includes("102") || txt.includes("103") || txt.includes("104")) return getZone("102_104_kv");
+    if (txt.includes("105") || txt.includes("106")) return getZone("105_106_kv");
+    if (txt.includes("110") || txt.includes("111") || txt.includes("112") || txt.includes("113")) return getZone("110_113_kv");
+    if (txt.includes("18 ") || txt.includes("бсмп") || txt.includes("2 кита") || txt.includes("дарханск") || txt.includes("жердев")) return getZone("bsmp_18kv");
+    if (txt.includes("саян") || txt.includes("тск") || txt.includes("фабрик") || txt.includes("терешков") || txt.includes("бабушкин") || txt.includes("боевая") || txt.includes("ключевск")) return getZone("tsk_fabrika");
+    if (txt.includes("мясокомбинат")) return getZone("myasokombinat");
+    if (txt.includes("мелькомбинат")) return getZone("melkombinat");
+
+    if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов") || txt.includes("жуковск")) return getZone("shishkovka");
+    if (txt.includes("пвз") || txt.includes("комсомольск") || txt.includes("чайковск")) return getZone("pvz");
+    if (txt.includes("загорск") || txt.includes("машзавод") || txt.includes("гастелло")) return getZone("mashzavod");
+    if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return getZone("vostochniy");
+    if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ") || txt.includes("борсоев")) return getZone("pl_sovetov");
+    if (txt.includes("рынок") || txt.includes("свердлов") || txt.includes("банзаров") || txt.includes("куйбышев")) return getZone("centr_rynok");
+    if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return getZone("vokzal");
+    if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return getZone("resp_bolnitsa");
+    if (txt.includes("трубачеев") || txt.includes("широких")) return getZone("trubacheeva_do_mason");
+
+    return null;
+  }
+
+  function setZone(type, zone) {
+    state[type] = zone;
+    document.getElementById(`${type}ZoneName`).innerText = zone.name;
+    document.getElementById(`${type}Badge`).style.display = 'flex';
+  }
+
+  function clearInput(type) {
+    document.getElementById(`${type}Input`).value = '';
+    document.getElementById(`${type}Clear`).style.display = 'none';
+    document.getElementById(`${type}List`).style.display = 'none';
+    document.getElementById(`${type}Badge`).style.display = 'none';
+    if (mapPoints[type] && myMap) { myMap.geoObjects.remove(mapPoints[type]); mapPoints[type] = null; }
+    state[type] = null;
+    document.getElementById('resultCard').style.display = 'none';
+  }
+
+  let modalTarget = null;
+  function openModal(target) {
+    modalTarget = target;
+    const l = document.getElementById('modalList');
+    l.innerHTML = '';
+    
+    let currentGroup = '';
+    ZONES.forEach(z => {
+      if (z.group !== currentGroup) {
+        currentGroup = z.group;
+        const header = document.createElement('div');
+        header.className = 'modal-group';
+        header.innerText = currentGroup;
+        l.appendChild(header);
+      }
+      const d = document.createElement('div');
+      d.className = 'modal-item'; d.innerText = z.name;
+      d.onclick = () => { setZone(modalTarget, z); closeModal(); };
+      l.appendChild(d);
+    });
+    document.getElementById('modal').style.display = 'flex';
+  }
+  function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+  function openDisclaimer() { document.getElementById('disclaimerModal').style.display = 'flex'; }
+  function closeDisclaimer() { document.getElementById('disclaimerModal').style.display = 'none'; }
+
+  function toggleOpt(optId) {
+    const el = document.getElementById(optId);
+    el.classList.toggle('active');
+    if (optId === 'optNight') state.night = !state.night;
+    if (optId === 'optStop') state.stop = !state.stop;
+    if (optId === 'optLuggage') state.luggage = !state.luggage;
+    if (optId === 'optDelivery') state.delivery = !state.delivery;
+  }
+
+  function calculate() {
+    const card = document.getElementById('resultCard');
+    if (!state.from || !state.to) {
+      alert("Выберите начальный и конечный район (кнопка 📋 или подсказка)");
+      return;
+    }
+
+    let basePrice = priceMatrix[`${state.from.id}_${state.to.id}`];
+
+    if (!basePrice) {
+      card.innerHTML = `<div class="route-title">${state.from.name} ➔ ${state.to.name}</div><div class="error-msg">Тариф уточняется у диспетчера.</div>`;
+      card.style.display = 'block';
+      return;
+    }
+
+    let finalPrice = basePrice;
+    let modsText = [];
+
+    if (state.delivery) { finalPrice += 150; modsText.push("📦 Услуга доставки"); }
+    if (state.stop) { finalPrice += 100; modsText.push("🛑 Непопутный заезд (+100₽)"); }
+    if (state.luggage) { finalPrice += 50; modsText.push("🧳 Габаритный багаж (+50₽)"); }
+    
+    const leftBank = ["tulunzha", "suranzan", "mir", "gurulba", "burvod", "leviy_bereg", "urozhay", "sibiryak_stimul", "dnt_vesna_etc", "dulan_ostrov", "cheremushki", "uchhoz", "sotnikovo_selenge", "sotnikovo_bagulnik", "sotnikovo_titan", "sotnikovo_tserkov", "sotnikovo_rodniki", "sotnikovo_gibdd", "sotnikovo_polyana", "poselye_rosneft", "poselye_shkola", "poselye_baris", "poselye_baris_500m", "poselye_edem", "poselye_konechnaya", "stroybaza_istok", "istok_solnyshko", "istok_mirnaya_baris", "istok_dalee_karyer", "soldatskiy", "aeroport", "nurselenie"];
+    
+    if (state.night) {
+      if (leftBank.includes(state.from.id) && leftBank.includes(state.to.id)) {
+        finalPrice += 50;
+        modsText.push("🌙 Ночь/Погода (Местная) (+50₽)");
+      } else {
+        finalPrice += 100;
+        modsText.push("🌙 Ночь/Погода (Дальняя) (+100₽)");
+      }
+    }
+
+    card.innerHTML = `
+      <div class="route-title">${state.from.name} <br>⬇<br> ${state.to.name}</div>
+      <div class="price-tag">${finalPrice} ₽</div>
+      ${modsText.length > 0 ? `<div class="modifiers-list">${modsText.join('<br>')}</div>` : ''}
+    `;
+    card.style.display = 'block';
+  }
+</script>
+</body>
+</html>
