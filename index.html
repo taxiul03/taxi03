@@ -125,11 +125,10 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <!-- ВЕРСИЯ С ДАТОЙ -->
-    <span class="version">Ver. 014 (30.10.26)</span>
+    <span class="version">Ver. 015 (30.10.26)</span>
   </div>
   
-  <!-- Блок ошибок -->
+  <!-- Блок диагностики (скрыт, пока нет ошибок) -->
   <div id="debugError"></div>
 </div>
 
@@ -158,13 +157,13 @@
 </div>
 
 <script>
-  // Глобальный перехватчик ошибок браузера
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
   const YANDEX_API_KEY = "2543bc4f-8c11-4e91-9c3a-8cf9a7b5753f";
+  const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
 
   const ZONES = [
     { id: "tulunzha", name: "Тулунжа", group: "ТУЛУНЖА И СОСЕДИ" },
@@ -275,16 +274,16 @@
   let myMap = null;
   let mapPoints = { from: null, to: null };
 
-  // 1. ЗАГРУЗКА ТАРИФОВ - ЗАПУСКАЕТСЯ СРАЗУ, НЕ ЖДЕТ КАРТУ!
+  // 1. ЗАГРУЗКА ТАРИФОВ (РАБОТАЕТ ВСЕГДА, ДАЖЕ ЕСЛИ КАРТЫ СЛОМАЛИСЬ)
   async function loadPrices() {
     const status = document.getElementById('statusText');
     try {
       const res = await fetch(SHEET_CSV);
-      if (!res.ok) throw new Error("Сбой Google Таблицы");
+      if (!res.ok) throw new Error("Сбой доступа к Google Таблице");
       
       const csv = await res.text();
       const lines = csv.split('\n');
-      if (lines.length < 2) throw new Error("Пустой файл");
+      if (lines.length < 2) throw new Error("Таблица пуста");
 
       const headers = lines[0].split(',').map(c => c.trim().toLowerCase());
 
@@ -308,106 +307,39 @@
       status.innerText = "База тарифов обновлена ✅";
       status.style.color = "#4caf50";
     } catch(e) {
-      status.innerText = "Ошибка прайса. Покажите это Админу ⚡";
+      status.innerText = "Ошибка загрузки прайса. Работа в оффлайн-режиме ⚡";
       status.style.color = "#ef5350";
-      document.getElementById('debugError').innerText += " Ошибка базы: " + e.message + ". ";
+      document.getElementById('debugError').innerText += " " + e.message;
     }
   }
-  // Мгновенный запуск тарифов
   loadPrices();
 
-  // 2. ДИНАМИЧЕСКАЯ ЗАГРУЗКА ЯНДЕКСА (НЕ БЛОКИРУЕТ САЙТ ПРИ ОШИБКЕ)
+  // 2. БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ КАРТЫ ЯНДЕКСА
   window.initYandexMap = function() {
     try {
-      document.getElementById('map').style.display = 'block'; // Показываем блок карты
+      document.getElementById('map').style.display = 'block';
       myMap = new ymaps.Map("map", {
-        center: [51.834, 107.584],
+        center: [51.834, 107.584], // Улан-Удэ
         zoom: 11,
         controls: ['zoomControl']
       });
-      initSuggest('from');
-      initSuggest('to');
     } catch(err) {
-      document.getElementById('map').style.display = 'none';
-      document.getElementById('debugError').innerText += " Сбой карты Яндекса: " + err.message + ". ";
+      document.getElementById('debugError').innerText += " Ошибка отрисовки карты: " + err.message;
     }
   };
 
-  // Создаем скрипт Яндекса "на лету"
   const yaScript = document.createElement('script');
+  // Используем ключ только для отрисовки карты (API Геокодирования и Карты)
   yaScript.src = `https://api-maps.yandex.ru/2.1/?apikey=${YANDEX_API_KEY}&lang=ru_RU&onload=initYandexMap`;
   yaScript.async = true;
-  yaScript.onerror = function() {
-    document.getElementById('debugError').innerText += " Доступ к Яндекс API заблокирован браузером или ключом. ";
-  };
   document.head.appendChild(yaScript);
 
-
-  // 3. ПОДСКАЗКИ ЯНДЕКСА И АЛГОРИТМ РАСПОЗНАВАНИЯ
-  function initSuggest(type) {
-    const input = document.getElementById(`${type}Input`);
-    const list = document.getElementById(`${type}List`);
-    const clear = document.getElementById(`${type}Clear`);
-
-    input.addEventListener('input', () => {
-      clear.style.display = input.value.length > 0 ? 'flex' : 'none';
-      const q = input.value.trim();
-      if (q.length < 2) { list.style.display = 'none'; return; }
-
-      if (typeof ymaps === 'undefined' || !ymaps.suggest) return;
-
-      ymaps.suggest("Улан-Удэ " + q).then(items => {
-        list.innerHTML = "";
-        if (!items.length) { list.style.display = 'none'; return; }
-
-        items.forEach(item => {
-          const div = document.createElement('div');
-          div.className = 'suggestion-item';
-          const zone = resolveZoneByText(item.value);
-          const zoneHtml = zone 
-            ? `<br><span style="color:#ffb300; font-size:12px; font-weight:700;">(${zone.name})</span>` 
-            : `<br><span style="color:#888; font-size:11px;">(Нажмите для ручного выбора)</span>`;
-
-          const cleanAddr = item.value.replace("Россия, Республика Бурятия, Улан-Удэ, ", "");
-          div.innerHTML = `<b>${cleanAddr}</b>${zoneHtml}`;
-          
-          div.onclick = () => {
-            input.value = cleanAddr;
-            list.style.display = 'none';
-            if (zone) { setZone(type, zone); } else { openModal(type); }
-            geocodeAndMark(type, item.value);
-          };
-          list.appendChild(div);
-        });
-        list.style.display = 'block';
-      }).catch(err => {
-         document.getElementById('debugError').innerText += " Ошибка поиска: " + err.message + ". ";
-      });
-    });
-  }
-
-  function geocodeAndMark(type, fullAddress) {
-    if (!myMap) return;
-    ymaps.geocode(fullAddress).then(res => {
-      const firstGeo = res.geoObjects.get(0);
-      if (!firstGeo) return;
-      const coords = firstGeo.geometry.getCoordinates();
-
-      if (mapPoints[type]) myMap.geoObjects.remove(mapPoints[type]);
-      mapPoints[type] = new ymaps.Placemark(coords, {
-        balloonContent: type === 'from' ? 'Посадка' : 'Высадка'
-      }, {
-        preset: type === 'from' ? 'islands#greenDotIcon' : 'islands#redDotIcon'
-      });
-      myMap.geoObjects.add(mapPoints[type]);
-      myMap.setBounds(myMap.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 30 });
-    });
-  }
-
+  // 3. УМНЫЙ АЛГОРИТМ ОПРЕДЕЛЕНИЯ РАЙОНА
   function resolveZoneByText(txt) {
     if (!txt) return null;
     txt = txt.toLowerCase();
 
+    // Защита от "жадного" поиска (как было с Баргузинской)
     if (txt.includes("сотников")) {
       if (txt.includes("полян")) return getZone("sotnikovo_polyana");
       if (txt.includes("родник") || txt.includes("большая полян")) return getZone("sotnikovo_rodniki");
@@ -456,8 +388,93 @@
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return getZone("resp_bolnitsa");
     if (txt.includes("трубачеев") || txt.includes("широких")) return getZone("trubacheeva_do_mason");
 
-    return null;
+    // Спорные улицы привязываем ТОЛЬКО если указан район
+    if (txt.includes("баргузинск") && txt.includes("октябрьск")) return getZone("tsk_fabrika");
+    if (txt.includes("можайск") && txt.includes("железнодорожн")) return getZone("mashzavod");
+
+    return null; // Если алгоритм не уверен, он предложит выбрать вручную!
   }
+
+  // 4. ВОЗВРАЩАЕМ БЕЗОТКАЗНЫЙ ПОИСК DADATA (Абсолютная независимость от банов Яндекса)
+  function setupDaDataSuggest(type) {
+    const input = document.getElementById(`${type}Input`);
+    const list = document.getElementById(`${type}List`);
+    const clear = document.getElementById(`${type}Clear`);
+    let timer;
+
+    input.addEventListener('input', () => {
+      clear.style.display = input.value.length > 0 ? 'flex' : 'none';
+      clearTimeout(timer);
+      const q = input.value.trim();
+      
+      if (q.length < 2) { list.style.display = 'none'; return; }
+
+      timer = setTimeout(async () => {
+        try {
+          const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
+            body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
+          });
+          
+          if (!res.ok) throw new Error("DaData не ответила");
+
+          const data = await res.json();
+          list.innerHTML = "";
+          
+          if (data.suggestions && data.suggestions.length > 0) {
+            data.suggestions.forEach(item => {
+              const div = document.createElement('div');
+              div.className = 'suggestion-item';
+              
+              const district = item.data?.city_district || item.data?.settlement_with_type || '';
+              const searchString = item.value + " " + district;
+              const zone = resolveZoneByText(searchString);
+              
+              const zoneHtml = zone ? `<br><span style="color:#ffb300; font-size:12px; font-weight:700;">(${zone.name})</span>` : `<br><span style="color:#ef5350; font-size:12px;">(Нажмите, чтобы выбрать район)</span>`;
+
+              div.innerHTML = `<b>${item.value}</b><small style="display:block; color:#aaa; margin-top:4px;">${district}</small>${zoneHtml}`;
+              
+              div.onclick = () => {
+                input.value = item.value;
+                list.style.display = 'none';
+                
+                if (zone) { 
+                  setZone(type, zone); 
+                } else { 
+                  openModal(type); 
+                }
+                
+                // Передаем точный адрес в Яндекс для отрисовки точки на карте
+                if (myMap && typeof ymaps !== 'undefined' && ymaps.geocode) {
+                  ymaps.geocode(item.value).then(resGeo => {
+                    const firstGeo = resGeo.geoObjects.get(0);
+                    if (!firstGeo) return;
+                    const coords = firstGeo.geometry.getCoordinates();
+                    if (mapPoints[type]) myMap.geoObjects.remove(mapPoints[type]);
+                    mapPoints[type] = new ymaps.Placemark(coords, { balloonContent: type === 'from' ? 'Посадка' : 'Высадка' }, { preset: type === 'from' ? 'islands#greenDotIcon' : 'islands#redDotIcon' });
+                    myMap.geoObjects.add(mapPoints[type]);
+                    myMap.setBounds(myMap.geoObjects.getBounds(), { checkZoomRange: true, zoomMargin: 30 });
+                  });
+                }
+              };
+              list.appendChild(div);
+            });
+            list.style.display = 'block';
+          } else {
+             list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px; text-align:center;">Адрес не найден.<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ ИЗ СПИСКА 📋</b></div>`;
+             list.style.display = 'block';
+          }
+        } catch(e) {
+          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой поиска (Нет сети).<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
+          list.style.display = 'block';
+        }
+      }, 350);
+    });
+  }
+
+  setupDaDataSuggest('from');
+  setupDaDataSuggest('to');
 
   function setZone(type, zone) {
     state[type] = zone;
