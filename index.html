@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Такси Местное</title>
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#121212">
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: #121212; color: #ffffff; display: flex; justify-content: center; padding: 10px; padding-bottom: 40px; }
+    .container { width: 100%; max-width: 500px; background: #1e1e1e; border-radius: 20px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    
+    h1 { font-size: 20px; font-weight: 800; color: #ffb300; margin-bottom: 16px; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .route-box { background: #2c2c2c; border-radius: 16px; padding: 12px; margin-bottom: 16px; }
+    .input-wrapper { position: relative; margin-bottom: 12px; }
+    .input-wrapper:last-child { margin-bottom: 0; }
+    
+    label { display: block; font-size: 11px; font-weight: 700; color: #aaaaaa; margin-bottom: 4px; text-transform: uppercase; }
+    input[type="text"] {
+      width: 100%; height: 48px; font-size: 16px; padding: 0 40px 0 14px;
+      background: #1e1e1e; border: 1.5px solid #3d3d3d; border-radius: 10px; color: #fff; outline: none; transition: 0.2s;
+    }
+    input[type="text"]:focus { border-color: #ffb300; }
+    
+    .clear-btn {
+      position: absolute; right: 10px; top: 22px; width: 24px; height: 24px;
+      background: #444; color: #fff; border-radius: 50%; display: flex;
+      justify-content: center; align-items: center; font-size: 12px; font-weight: bold;
+      cursor: pointer; display: none;
+    }
+
+    /* Подсказки */
+    .suggestions {
+      position: absolute; top: 100%; left: 0; right: 0; background: #2c2c2c;
+      border: 1px solid #444; border-radius: 10px; max-height: 240px;
+      overflow-y: auto; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8); display: none;
+    }
+    .suggestion-item { padding: 12px 14px; font-size: 15px; border-bottom: 1px solid #3d3d3d; cursor: pointer; line-height: 1.2; }
+    .suggestion-item small { display: block; color: #aaa; font-size: 12px; margin-top: 4px; }
+    .suggestion-item:active { background: #3d3d3d; }
+
+    .zone-badge { font-size: 12px; color: #4caf50; font-weight: 600; margin-top: 6px; display: none; justify-content: space-between; padding: 0 4px; }
+    .change-link { color: #ffb300; text-decoration: underline; cursor: pointer; }
+
+    /* Надбавки */
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .option-btn {
+      background: #2c2c2c; border: 1.5px solid #3d3d3d; border-radius: 12px;
+      padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 600;
+      color: #aaa; cursor: pointer; transition: 0.2s; user-select: none;
+    }
+    .option-btn.active { background: #3e2700; border-color: #ffb300; color: #ffb300; }
+
+    .btn-calc {
+      width: 100%; height: 56px; background: #ffb300; color: #121212;
+      font-size: 18px; font-weight: 800; border: none; border-radius: 14px;
+      cursor: pointer; box-shadow: 0 4px 15px rgba(255, 179, 0, 0.4); margin-bottom: 16px;
+    }
+    .btn-calc:active { transform: scale(0.98); background: #e09e00; }
+
+    .result-card { background: #2c2c2c; border-radius: 16px; padding: 20px; text-align: center; border: 1px solid #444; display: none; }
+    .route-title { font-size: 14px; font-weight: 600; color: #aaa; margin-bottom: 10px; line-height: 1.4; }
+    .price-tag { font-size: 48px; font-weight: 900; color: #4caf50; margin-bottom: 10px; }
+    .modifiers-list { font-size: 12px; color: #ffb300; font-weight: 600; }
+    .error-msg { font-size: 15px; font-weight: 600; color: #ef5350; line-height: 1.4; }
+
+    /* Окно выбора */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
+    .modal-box { background: #1e1e1e; width: 100%; max-width: 400px; max-height: 85vh; border-radius: 16px; display: flex; flex-direction: column; border: 1px solid #444; }
+    .modal-header { padding: 16px; font-weight: 800; border-bottom: 1px solid #3d3d3d; display: flex; justify-content: space-between; }
+    .modal-list { overflow-y: auto; padding: 10px 0; }
+    .modal-item { padding: 14px 20px; font-size: 15px; border-bottom: 1px solid #2c2c2c; cursor: pointer; }
+    .modal-item:active { background: #333; }
+    
+    .status-text { text-align: center; font-size: 11px; color: #666; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🚕 ТАКСИ МЕСТНОЕ</h1>
+
+  <div class="route-box">
+    <div class="input-wrapper">
+      <label>Откуда (посадка)</label>
+      <input type="text" id="fromInput" placeholder="Начните вводить адрес..." autocomplete="off">
+      <div id="fromClear" class="clear-btn" onclick="clearInput('from')">✕</div>
+      <div id="fromList" class="suggestions"></div>
+      <div id="fromBadge" class="zone-badge">
+        <span id="fromZoneName"></span>
+        <span class="change-link" onclick="openModal('from')">Изменить ✎</span>
+      </div>
+    </div>
+
+    <div class="input-wrapper">
+      <label>Куда (высадка)</label>
+      <input type="text" id="toInput" placeholder="Начните вводить адрес..." autocomplete="off">
+      <div id="toClear" class="clear-btn" onclick="clearInput('to')">✕</div>
+      <div id="toList" class="suggestions"></div>
+      <div id="toBadge" class="zone-badge">
+        <span id="toZoneName"></span>
+        <span class="change-link" onclick="openModal('to')">Изменить ✎</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="options-grid">
+    <div class="option-btn" id="optNight" onclick="toggleOpt('optNight')">🌙 Ночь / Погода</div>
+    <div class="option-btn" id="optStop" onclick="toggleOpt('optStop')">🛑 Заезд (+100₽)</div>
+    <div class="option-btn" id="optLuggage" onclick="toggleOpt('optLuggage')">🧳 Багаж (+50₽)</div>
+    <div class="option-btn" id="optDelivery" onclick="toggleOpt('optDelivery')">📦 Доставка</div>
+  </div>
+
+  <button class="btn-calc" onclick="calculate()">РАССЧИТАТЬ СТОИМОСТЬ</button>
+
+  <div id="resultCard" class="result-card"></div>
+  <div class="status-text" id="statusText">Подключение к базе тарифов...</div>
+</div>
+
+<div id="modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>Выберите район вручную</span>
+      <span style="cursor:pointer; color:#ffb300;" onclick="closeModal()">✕ ЗАКРЫТЬ</span>
+    </div>
+    <div class="modal-list" id="modalList"></div>
+  </div>
+</div>
+
+<script>
+  // --- КОНФИГУРАЦИЯ ---
+  const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
+  const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKzPYcFR7yrEkoKMSsuX7VC7IXkE5jZ1RD-4C-0VdIOxhVPpp8ujsh29bJJ-PryjHx5kImJrl6dD0U/pub?output=csv";
+
+  // ВСЕ ЗОНЫ
+  const ZONES = [
+    { id: "tulunzha", name: "Тулунжа" },
+    { id: "burvod", name: "Бурвод / ВАИ / Левый берег" },
+    { id: "gurulba", name: "Гурульба" },
+    { id: "sotnikovo_selenge", name: "Сотниково (Сэлэнгэ)" },
+    { id: "sotnikovo_titan", name: "Сотниково (Титан)" },
+    { id: "sotnikovo_bagulnik", name: "Сотниково (Багульник)" },
+    { id: "sotnikovo_tserkov", name: "Сотниково (Церковь / Школа)" },
+    { id: "sotnikovo_rodniki", name: "Сотниково (Родники)" },
+    { id: "sotnikovo_gibdd", name: "Сотниково (ГИБДД / РК Здоровье)" },
+    { id: "sotnikovo_polyana", name: "Сотниково (Зеленая Поляна)" },
+    { id: "pl_sovetov", name: "Пл. Советов / Центр" },
+    { id: "centr_rynok", name: "Центральный рынок" },
+    { id: "lazo", name: "Лазо" },
+    { id: "tyulpan", name: "Тюльпан" },
+    { id: "resp_bolnitsa", name: "Респ. больница" },
+    { id: "trubacheeva_do_mason", name: "Трубачеева (до Масон)" },
+    { id: "trubacheeva_ot_mason", name: "Трубачеева (от Масон)" },
+    { id: "tsk_fabrika", name: "ТСК / Саяны / Фабрика" },
+    { id: "bsmp_18kv", name: "18 квартал / БСМП / 2 Кита" },
+    { id: "140_140a_kv", name: "140 и 140а кварталы" },
+    { id: "140b_142_kv", name: "140б и 142 кварталы" },
+    { id: "102_104_kv", name: "102-104 кварталы" },
+    { id: "105_106_kv", name: "105-106 кварталы" },
+    { id: "110_113_kv", name: "110-113 кварталы" },
+    { id: "myasokombinat", name: "Мясокомбинат" },
+    { id: "melkombinat", name: "Мелькомбинат" },
+    { id: "sosnoviy_bor", name: "Сосновый Бор" },
+    { id: "zverosovhoz", name: "Зверосовхоз" },
+    { id: "vokzal", name: "ЖД Вокзал" },
+    { id: "shishkovka", name: "Шишковка" },
+    { id: "stekolka", name: "Стеколка (Абсолют)" },
+    { id: "divizka", name: "Дивизка" },
+    { id: "pvz", name: "ПВЗ" },
+    { id: "oreshkovo", name: "Орешково" },
+    { id: "kirzavod_do_tec", name: "Кирзавод (до ТЭЦ)" },
+    { id: "kirzavod_ot_tec", name: "Кирзавод (от ТЭЦ)" },
+    { id: "strelka_globus", name: "Стрелка (Глобус)" },
+    { id: "strelka_maslenka", name: "Стрелка (Масленка)" },
+    { id: "berezovka_datsan", name: "В. Березовка (Дацан)" },
+    { id: "berezovka_ippodrom", name: "В. Березовка (Ипподром)" },
+    { id: "berezovka_etno", name: "В. Березовка (Этнографический)" },
+    { id: "berezovka_cvm", name: "В. Березовка (ЦВМ)" },
+    { id: "berezovka_kulkison", name: "В. Березовка (Кулькисон)" },
+    { id: "zelenhoz", name: "Зеленхоз" },
+    { id: "zeleniy", name: "Зеленый" },
+    { id: "mashzavod", name: "Машзавод / Загорск" },
+    { id: "vostochniy", name: "Восточный" },
+    { id: "aeroport", name: "Аэропорт Байкал" },
+    { id: "istok_solnyshko", name: "Исток (Солнышко)" },
+    { id: "poselye", name: "Поселье" },
+    { id: "soldatskiy", name: "Солдатский" },
+    { id: "nurselenie", name: "Нурселение" },
+    { id: "nizh_ivolga", name: "Нижняя Иволга" },
+    { id: "ivolginsk", name: "Иволгинск" },
+    { id: "verkh_ivolga", name: "Верхняя Иволга" },
+    { id: "edemik", name: "Эдэмик" },
+    { id: "voznesenovka", name: "Вознесеновка" },
+    { id: "nizh_sayantuy", name: "Вахмистрово / Н. Саянтуй" }
+  ];
+
+  let priceMatrix = {};
+  let state = { from: null, to: null, night: false, stop: false, luggage: false, delivery: false };
+
+  async function loadPrices() {
+    try {
+      const res = await fetch(SHEET_CSV);
+      const csv = await res.text();
+      csv.split('\n').slice(1).forEach(l => {
+        const p = l.split(',').map(s => s.trim().toLowerCase());
+        if (p.length >= 3) {
+          const val = parseInt(p[2], 10);
+          priceMatrix[`${p[0]}_${p[1]}`] = val;
+          priceMatrix[`${p[1]}_${p[0]}`] = val;
+        }
+      });
+      document.getElementById('statusText').innerText = "База тарифов успешно загружена ✅";
+    } catch(e) {
+      document.getElementById('statusText').innerText = "Ошибка загрузки базы. Проверьте интернет.";
+    }
+  }
+  loadPrices();
+
+  // Умный алгоритм: учитываем улицу, район города и поселок
+  function resolveZone(item) {
+    const txt = (item.value || "").toLowerCase();
+    const street = (item.data?.street || "").toLowerCase();
+    const district = (item.data?.city_district || "").toLowerCase();
+    const settlement = (item.data?.settlement_with_type || item.data?.settlement || "").toLowerCase();
+
+    // 1. Села и ДНТ
+    if (settlement.includes("тулунж") || txt.includes("тулунж")) return ZONES.find(z => z.id === "tulunzha");
+    if (settlement.includes("гурульб") || txt.includes("гурульб")) return ZONES.find(z => z.id === "gurulba");
+    if (settlement.includes("посель") || txt.includes("посель")) return ZONES.find(z => z.id === "poselye");
+    if (settlement.includes("солдатск") || txt.includes("солдатск")) return ZONES.find(z => z.id === "soldatskiy");
+    
+    // Детализация Сотниково
+    if (settlement.includes("сотников") || txt.includes("сотников")) {
+      if (txt.includes("полян")) return ZONES.find(z => z.id === "sotnikovo_polyana");
+      if (txt.includes("родник") || txt.includes("большая полян")) return ZONES.find(z => z.id === "sotnikovo_rodniki");
+      if (txt.includes("гибдд") || txt.includes("здоровье") || txt.includes("колобк")) return ZONES.find(z => z.id === "sotnikovo_gibdd");
+      if (txt.includes("церков") || txt.includes("тухачевск") || txt.includes("промышлен")) return ZONES.find(z => z.id === "sotnikovo_tserkov");
+      if (txt.includes("багульник") || txt.includes("овощевод") || txt.includes("созвезди")) return ZONES.find(z => z.id === "sotnikovo_bagulnik");
+      if (txt.includes("титан") || txt.includes("респект")) return ZONES.find(z => z.id === "sotnikovo_titan");
+      return ZONES.find(z => z.id === "sotnikovo_selenge");
+    }
+
+    // 2. ДУБЛИКАТЫ УЛИЦ С УЧЕТОМ РАЙОНА (Баргузинская, Можайская)
+    if (street.includes("баргузинск")) {
+      if (district.includes("советск") || txt.includes("бурвод")) return ZONES.find(z => z.id === "burvod");
+      return ZONES.find(z => z.id === "tsk_fabrika"); // Октябрьский р-н
+    }
+    if (street.includes("можайск")) {
+      if (district.includes("советск") || txt.includes("тулунж")) return ZONES.find(z => z.id === "tulunzha");
+      return ZONES.find(z => z.id === "mashzavod"); // Железнодорожный р-н
+    }
+
+    // 3. Маркеры Левого берега (Советский район)
+    if (txt.includes("бурвод") || txt.includes("ваи") || txt.includes("мерецков") || txt.includes("кабанск") || txt.includes("урожай") || txt.includes("суранзан") || txt.includes("сибиряк")) return ZONES.find(z => z.id === "burvod");
+    if (txt.includes("аэропорт")) return ZONES.find(z => z.id === "aeroport");
+    if (txt.includes("исток")) return ZONES.find(z => z.id === "istok_solnyshko");
+
+    // 4. Город (Октябрьский)
+    if (txt.includes("140") || txt.includes("142")) return ZONES.find(z => z.id === "140_140a_kv");
+    if (txt.includes("102") || txt.includes("103") || txt.includes("104")) return ZONES.find(z => z.id === "102_104_kv");
+    if (txt.includes("105") || txt.includes("106")) return ZONES.find(z => z.id === "105_106_kv");
+    if (txt.includes("110") || txt.includes("111") || txt.includes("112") || txt.includes("113")) return ZONES.find(z => z.id === "110_113_kv");
+    if (txt.includes("18 ") || txt.includes("бсмп") || txt.includes("2 кита") || txt.includes("дарханск") || txt.includes("жердев")) return ZONES.find(z => z.id === "bsmp_18kv");
+    if (txt.includes("саян") || txt.includes("тск") || txt.includes("фабрик") || txt.includes("терешков") || txt.includes("бабушкин") || txt.includes("боевая")) return ZONES.find(z => z.id === "tsk_fabrika");
+
+    // 5. Город (Железнодорожный и Центр)
+    if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов")) return ZONES.find(z => z.id === "shishkovka");
+    if (txt.includes("пвз") || txt.includes("комсомольск") || txt.includes("чайковск")) return ZONES.find(z => z.id === "pvz");
+    if (txt.includes("загорск") || txt.includes("машзавод") || txt.includes("гастелло")) return ZONES.find(z => z.id === "mashzavod");
+    if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return ZONES.find(z => z.id === "vostochniy");
+    if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ")) return ZONES.find(z => z.id === "pl_sovetov");
+    if (txt.includes("рынок") || txt.includes("свердлов") || txt.includes("банзаров")) return ZONES.find(z => z.id === "centr_rynok");
+    if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев")) return ZONES.find(z => z.id === "vokzal");
+    if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return ZONES.find(z => z.id === "resp_bolnitsa");
+    if (txt.includes("трубачеев") || txt.includes("широких")) return ZONES.find(z => z.id === "trubacheeva_do_mason");
+
+    return null;
+  }
+
+  function setupField(type) {
+    const input = document.getElementById(`${type}Input`);
+    const list = document.getElementById(`${type}List`);
+    const clear = document.getElementById(`${type}Clear`);
+    let timer;
+
+    input.addEventListener('input', () => {
+      clear.style.display = input.value.length > 0 ? 'flex' : 'none';
+      clearTimeout(timer);
+      const q = input.value.trim();
+      if (q.length < 2) { list.style.display = 'none'; return; }
+
+      timer = setTimeout(async () => {
+        try {
+          const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
+            body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
+          });
+          const data = await res.json();
+          list.innerHTML = "";
+          
+          if (data.suggestions?.length) {
+            data.suggestions.forEach(item => {
+              const div = document.createElement('div');
+              div.className = 'suggestion-item';
+              
+              // Формируем текст района и выявленной Зоны
+              const district = item.data?.city_district || item.data?.settlement_with_type || '';
+              const zone = resolveZone(item);
+              const zoneHtml = zone ? `<br><span style="color:#ffb300; font-size:12px; font-weight:600;">(${zone.name})</span>` : `<br><span style="color:#ef5350; font-size:12px;">(Нажмите, чтобы указать район)</span>`;
+
+              div.innerHTML = `<b>${item.value}</b><small>${district}${zoneHtml}</small>`;
+              
+              div.onclick = () => {
+                input.value = item.value;
+                list.style.display = 'none';
+                if (zone) {
+                  setZone(type, zone);
+                } else {
+                  openModal(type);
+                }
+              };
+              list.appendChild(div);
+            });
+            list.style.display = 'block';
+          }
+        } catch(e) {}
+      }, 300);
+    });
+  }
+
+  function setZone(type, zone) {
+    state[type] = zone;
+    document.getElementById(`${type}ZoneName`).innerText = zone.name;
+    document.getElementById(`${type}Badge`).style.display = 'flex';
+  }
+
+  function clearInput(type) {
+    document.getElementById(`${type}Input`).value = '';
+    document.getElementById(`${type}Clear`).style.display = 'none';
+    document.getElementById(`${type}List`).style.display = 'none';
+    document.getElementById(`${type}Badge`).style.display = 'none';
+    state[type] = null;
+    document.getElementById('resultCard').style.display = 'none';
+  }
+
+  setupField('from');
+  setupField('to');
+
+  let modalTarget = null;
+  function openModal(target) {
+    modalTarget = target;
+    const l = document.getElementById('modalList');
+    l.innerHTML = '';
+    ZONES.forEach(z => {
+      const d = document.createElement('div');
+      d.className = 'modal-item'; d.innerText = z.name;
+      d.onclick = () => { setZone(modalTarget, z); closeModal(); };
+      l.appendChild(d);
+    });
+    document.getElementById('modal').style.display = 'flex';
+  }
+  function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+  function toggleOpt(optId) {
+    const el = document.getElementById(optId);
+    el.classList.toggle('active');
+    if (optId === 'optNight') state.night = !state.night;
+    if (optId === 'optStop') state.stop = !state.stop;
+    if (optId === 'optLuggage') state.luggage = !state.luggage;
+    if (optId === 'optDelivery') state.delivery = !state.delivery;
+  }
+
+  function calculate() {
+    const card = document.getElementById('resultCard');
+    const fromStr = document.getElementById('fromInput').value;
+    const toStr = document.getElementById('toInput').value;
+    
+    if (!fromStr || !toStr) {
+      alert("Заполните оба адреса посадки и высадки!");
+      return;
+    }
+    card.style.display = 'block';
+
+    if (!state.from || !state.to) {
+      card.innerHTML = `<div class="error-msg">Я пока не знаю, как узнаю - сообщу.<br><small>(Адрес слишком далеко от обслуживаемых зон)</small></div>`;
+      return;
+    }
+
+    let basePrice = priceMatrix[`${state.from.id}_${state.to.id}`];
+
+    if (!basePrice) {
+      card.innerHTML = `
+        <div class="route-title">${state.from.name} ➔ ${state.to.name}</div>
+        <div class="error-msg" style="margin-top:10px;">Уточните стоимость поездки у Админа группы, либо у знающих коллег.</div>
+      `;
+      return;
+    }
+
+    let finalPrice = basePrice;
+    let modsText = [];
+
+    if (state.delivery) {
+       finalPrice += 150;
+       modsText.push("📦 Услуга доставки");
+    }
+    if (state.stop) {
+      finalPrice += 100;
+      modsText.push("🛑 Непопутный заезд (+100₽)");
+    }
+    if (state.luggage) {
+      finalPrice += 50;
+      modsText.push("🧳 Габаритный багаж (+50₽)");
+    }
+    if (state.night) {
+      const leftBank = ["tulunzha", "gurulba", "burvod", "sotnikovo_selenge", "sotnikovo_titan", "sotnikovo_bagulnik", "sotnikovo_tserkov", "sotnikovo_rodniki", "sotnikovo_gibdd", "sotnikovo_polyana"];
+      const isLocal = leftBank.includes(state.from.id) && leftBank.includes(state.to.id);
+      if (isLocal) {
+        finalPrice += 50;
+        modsText.push("🌙 Ночь/Погода по местности (+50₽)");
+      } else {
+        finalPrice += 100;
+        modsText.push("🌙 Ночь/Погода дальняя (+100₽)");
+      }
+    }
+
+    card.innerHTML = `
+      <div class="route-title">${state.from.name} <br>⬇<br> ${state.to.name}</div>
+      <div class="price-tag">${finalPrice} ₽</div>
+      ${modsText.length > 0 ? `<div class="modifiers-list">${modsText.join('<br>')}</div>` : ''}
+    `;
+  }
+</script>
+</body>
+</html>
