@@ -74,8 +74,6 @@
     .modal-item { padding: 14px 20px; font-size: 15px; border-bottom: 1px solid #282828; cursor: pointer; color: #ddd; }
     
     .status-text { text-align: center; font-size: 12px; font-weight: bold; color: #777; margin-bottom: 10px; }
-    .disclaimer-link { text-align: center; font-size: 12px; color: #888; text-decoration: underline; cursor: pointer; margin-bottom: 14px; }
-    
     .footer-bar { display: flex; justify-content: space-between; border-top: 1px solid #333; padding-top: 12px; font-size: 11px; color: #666; font-weight: 600; }
     .footer-bar .creator { color: #888; }
     .footer-bar .version { color: #4caf50; font-family: monospace; font-size: 12px; }
@@ -177,7 +175,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 028 | 03.11.2026</span>
+    <span class="version">Ver. 029 | 03.11.2026</span>
   </div>
   <div id="debugError"></div>
 </div>
@@ -330,7 +328,7 @@
     { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" }
   ];
 
-  // ГЛОБАЛЬНЫЕ МАССИВЫ (Вынесены для оптимизации памяти и устранения зависаний)
+  // ГЛОБАЛЬНЫЕ МАССИВЫ (Чтобы телефон не вис от тысяч массивов при наборе текста)
   const BURVOD_KWS = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
   const TULUNZHA_KWS = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
   const SURANZAN_KWS = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
@@ -420,7 +418,7 @@
         return [getZone("trubacheeva_do_mason"), getZone("trubacheeva_ot_mason")]; 
     }
 
-    // 3. СПОРНЫЕ УЛИЦЫ 
+    // 3. СПОРНЫЕ УЛИЦЫ (ПРОСЕЛОЧНАЯ УБРАНА ИЗ БУРВОДА)
     if (txt.includes("проселочн")) {
       return [getZone("burvod"), getZone("verkh_ivolga"), getZone("ivolginsk")];
     }
@@ -464,11 +462,12 @@
         return [getZone("burvod"), getZone("leviy_bereg")];
     }
 
-    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН
+    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН (ГЛОБАЛЬНЫЕ МАССИВЫ)
     if (BURVOD_KWS.some(kw => txt.includes(kw))) return [getZone("burvod")];
     if (TULUNZHA_KWS.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
     if (SURANZAN_KWS.some(kw => txt.includes(kw))) return [getZone("suranzan")];
     if (GURULBA_KWS.some(kw => txt.includes(kw))) return [getZone("gurulba")];
+
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
 
     // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
@@ -505,10 +504,7 @@
     return []; 
   }
 
-  // ОБЪЕКТЫ ДЛЯ ОТМЕНЫ ПРЕДЫДУЩИХ ЗАПРОСОВ К СЕРВЕРУ
-  let cityControllerFrom = null;
-  let cityControllerTo = null;
-
+  // --- ГОРОДСКОЙ ВВОД (Оптимизирован от зависаний) ---
   function setupCitySuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -518,27 +514,19 @@
     input.addEventListener('input', () => {
       clear.style.display = input.value.length > 0 ? 'flex' : 'none';
       clearTimeout(timer);
-      
-      if (type === 'from' && cityControllerFrom) cityControllerFrom.abort();
-      if (type === 'to' && cityControllerTo) cityControllerTo.abort();
-
       const q = input.value.trim();
+      
       if (q.length < 2) { list.style.display = 'none'; return; }
 
       timer = setTimeout(async () => {
-        const controller = new AbortController();
-        if (type === 'from') cityControllerFrom = controller;
-        if (type === 'to') cityControllerTo = controller;
-
         try {
           const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
             method: "POST",
-            signal: controller.signal,
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
             body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
           });
           
-          if (!res.ok) throw new Error("DaData не ответила");
+          if (!res.ok) throw new Error("API Limit");
           const data = await res.json();
           list.innerHTML = "";
           
@@ -546,6 +534,7 @@
             data.suggestions.forEach(item => {
               const fullStr = item.unrestricted_value || item.value;
               const district = item.data?.city_district || item.data?.settlement_with_type || '';
+              
               const zones = resolveZonesByText(item.value, fullStr);
               
               if (zones.length === 0) {
@@ -572,15 +561,15 @@
              list.style.display = 'block';
           }
         } catch(e) {
-          if (e.name === 'AbortError') return; // Игнорируем отмененные запросы
+          // Если интернет пропал, выводим ручной выбор
           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой поиска (Нет сети).<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
           list.style.display = 'block';
         }
-      }, 300);
+      }, 500); // 500мс спасут телефон от зависания
     });
   }
 
-  let interController = null;
+  // --- МЕЖГОРОДСКОЙ ВВОД ---
   function setupIntercitySuggest() {
     const input = document.getElementById('interInput');
     const list = document.getElementById('interList');
@@ -590,17 +579,14 @@
     input.addEventListener('input', () => {
       clear.style.display = input.value.length > 0 ? 'flex' : 'none';
       clearTimeout(timer);
-      if (interController) interController.abort();
-      
       const q = input.value.trim();
+      
       if (q.length < 2) { list.style.display = 'none'; return; }
 
       timer = setTimeout(async () => {
-        interController = new AbortController();
         try {
           const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
             method: "POST",
-            signal: interController.signal,
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
             body: JSON.stringify({ query: q, count: 5, locations: [{ region: "Бурятия" }] })
           });
@@ -623,10 +609,8 @@
             });
             if(list.innerHTML !== "") list.style.display = 'block';
           }
-        } catch(e) {
-            if (e.name === 'AbortError') return;
-        }
-      }, 300);
+        } catch(e) { }
+      }, 500);
     });
   }
 
