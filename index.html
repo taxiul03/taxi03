@@ -177,7 +177,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 031 | 03.11.2026</span>
+    <span class="version">Ver. 032 | 03.11.2026</span>
   </div>
   <div id="debugError"></div>
 </div>
@@ -323,11 +323,44 @@
     { id: "myasokombinat", name: "Мясокомбинат", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "melkombinat", name: "Мелькомбинат", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "zverosovhoz", name: "Зверосовхоз", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
-    { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" }
+    { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
+    
+    // ВАЖНО: ВОТ ТЕ САМЫЕ ЗОНЫ, КОТОРЫЕ БЫЛИ УТЕРЯНЫ В ПРОШЛОЙ ВЕРСИИ
+    { id: "nizh_ivolga", name: "Нижняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
+    { id: "ivolginsk", name: "Иволгинск", group: "ИВОЛГИНСКИЙ РАЙОН" },
+    { id: "verkh_ivolga", name: "Верхняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
+    { id: "edemik", name: "Эдэмик", group: "ИВОЛГИНСКИЙ РАЙОН" },
+    { id: "voznesenovka", name: "Вознесеновка (Тарбаг.)", group: "ТАРБАГАТАЙСКИЙ РАЙОН" },
+    { id: "nizh_sayantuy", name: "Н. Саянтуй / Вахмистрово", group: "ТАРБАГАТАЙСКИЙ РАЙОН" },
+    { id: "ilinka", name: "Ильинка", group: "МЕЖГОРОД" },
+    { id: "turuntaevo", name: "Турунтаево", group: "МЕЖГОРОД" },
+    { id: "naryn_atsagat", name: "Нарын-Ацагат", group: "МЕЖГОРОД" },
+    { id: "ozero_torma", name: "Озеро Торма", group: "МЕЖГОРОД" },
+    { id: "tarbagatay", name: "Тарбагатай", group: "МЕЖГОРОД" },
+    { id: "kabansk", name: "Кабанск", group: "МЕЖГОРОД" },
+    { id: "schuchye_ozero", name: "Щучье озеро", group: "МЕЖГОРОД" },
+    { id: "muhorshibir", name: "Мухоршибирь", group: "МЕЖГОРОД" },
+    { id: "baykalskiy_priboy", name: "Байкальский прибой", group: "МЕЖГОРОД" },
+    { id: "gremyachinsk", name: "Гремячинск", group: "МЕЖГОРОД" },
+    { id: "enhaluk", name: "Энхалук", group: "МЕЖГОРОД" },
+    { id: "turka", name: "Турка", group: "МЕЖГОРОД" },
+    { id: "gusinoe_ozero", name: "Гусиное озеро", group: "МЕЖГОРОД" },
+    { id: "goryachinsk", name: "Горячинск", group: "МЕЖГОРОД" },
+    { id: "petrovsk_zabaykalskiy", name: "Петровск-Забайкальский", group: "МЕЖГОРОД" },
+    { id: "kyahta", name: "Кяхта", group: "МЕЖГОРОД" },
+    { id: "tanhoy", name: "Танхой", group: "МЕЖГОРОД" },
+    { id: "ust_barguzin", name: "Усть-Баргузин", group: "МЕЖГОРОД" },
+    { id: "barguzin", name: "Баргузин", group: "МЕЖГОРОД" },
+    { id: "ozero_izumrudnoe", name: "Озеро Изумрудное", group: "МЕЖГОРОД" },
+    { id: "kurumkan", name: "Курумкан", group: "МЕЖГОРОД" },
+    { id: "tunka", name: "Тунка", group: "МЕЖГОРОД" },
+    { id: "horinsk", name: "Хоринск", group: "МЕЖГОРОД" },
+    { id: "listvyanka", name: "Листвянка", group: "МЕЖГОРОД" }
   ];
 
-  // ВАЖНО: ЭТА ФУНКЦИЯ ВОЗВРАЩЕНА И БОЛЬШЕ НЕ ВЫЗОВЕТ ОШИБКУ
-  function getZone(id) { return ZONES.find(z => z.id === id); }
+  function getZone(id) { 
+      return ZONES.find(z => z.id === id); 
+  }
 
   // ГЛОБАЛЬНЫЕ МАССИВЫ УЛИЦ
   const BURVOD_KWS = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
@@ -417,7 +450,7 @@
         return [getZone("trubacheeva_do_mason"), getZone("trubacheeva_ot_mason")]; 
     }
 
-    // 3. СПОРНЫЕ УЛИЦЫ
+    // 3. СПОРНЫЕ УЛИЦЫ 
     if (txt.includes("проселочн")) {
       return [getZone("burvod"), getZone("verkh_ivolga"), getZone("ivolginsk")];
     }
@@ -494,7 +527,7 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
 
-    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ
+    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
     if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
     if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
@@ -502,7 +535,7 @@
     return []; 
   }
 
-  // --- ГОРОДСКОЙ ВВОД (Оптимизирован от зависаний) ---
+  // --- ГОРОДСКОЙ ВВОД ---
   function setupCitySuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -526,7 +559,7 @@
           
           if (!res.ok) {
               const statusText = await res.text();
-              throw new Error(`Ошибка API (Код: ${res.status}). Возможно, исчерпан лимит.`);
+              throw new Error(`Ошибка API (Код: ${res.status}). Возможно, исчерпан лимит 10 000 запросов.`);
           }
           
           const data = await res.json();
@@ -547,7 +580,8 @@
                   div.onclick = () => { input.value = item.value; list.style.display = 'none'; openModal(type); };
                   list.appendChild(div);
               } else {
-                  zones.forEach(zone => {
+                  // ПРЕДОХРАНИТЕЛЬ: Отфильтровываем undefined зоны, чтобы код не падал
+                  zones.filter(Boolean).forEach(zone => {
                       const div = document.createElement('div');
                       div.className = 'suggestion-item';
                       div.innerHTML = `<b>${item.value}</b><small style="display:block; color:#aaa; margin-top:4px;">${district}</small>
@@ -563,10 +597,10 @@
              list.style.display = 'block';
           }
         } catch(e) {
-          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ <b>СБОЙ ПОИСКА (Нет сети)</b><br>${e.message}<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
+          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ <b>СБОЙ СЕРВЕРА DADATA</b><br>${e.message}<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
           list.style.display = 'block';
         }
-      }, 500);
+      }, 500); 
     });
   }
 
@@ -613,7 +647,7 @@
             if(list.innerHTML !== "") list.style.display = 'block';
           }
         } catch(e) { 
-           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой сети / API.</div>`;
+           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой сервера DaData.</div>`;
            list.style.display = 'block';
         }
       }, 500);
