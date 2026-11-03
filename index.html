@@ -7,14 +7,19 @@
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#121212">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.png">
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: #121212; color: #ffffff; display: flex; justify-content: center; padding: 10px; padding-bottom: 40px; }
     .container { width: 100%; max-width: 500px; background: #1e1e1e; border-radius: 20px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
     
-    h1 { font-size: 20px; font-weight: 800; color: #ffb300; margin-bottom: 16px; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; }
+    h1 { font-size: 20px; font-weight: 800; color: #ffb300; margin-bottom: 4px; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; }
+
+    /* БЛОК С ТЕЛЕФОНАМИ */
+    .header-phones { display: flex; justify-content: center; gap: 10px; margin-bottom: 16px; }
+    .header-phones a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; background: #00A82F; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 800; border: 1.5px solid #00c739; transition: 0.2s; }
+    .header-phones a:active { background: #008f27; }
 
     .route-box { background: #2c2c2c; border-radius: 16px; padding: 12px; margin-bottom: 16px; }
     .input-wrapper { position: relative; margin-bottom: 14px; }
@@ -93,6 +98,12 @@
 
 <div class="container">
   <h1>🚕 ТАКСИ МЕСТНОЕ</h1>
+
+  <!-- Кнопки с телефонами -->
+  <div class="header-phones">
+    <a href="tel:700077">📞 70-00-77</a>
+    <a href="tel:404040">📞 40-40-40</a>
+  </div>
 
   <button id="installPwaBtn">📲 Установить приложение на телефон</button>
 
@@ -181,7 +192,6 @@
 </div>
 
 <script>
-  // --- ЛОГИКА PWA УСТАНОВКИ ---
   let deferredPrompt;
   const installBtn = document.getElementById('installPwaBtn');
 
@@ -361,34 +371,28 @@
   }
   loadPrices();
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 023) ---
   function resolveZonesByText(txt, fullAddress = "") {
     if (!txt) return [];
     txt = txt.toLowerCase();
     fullAddress = fullAddress.toLowerCase();
 
-    // 1. СТРОГИЕ МИКРОРАЙОНЫ (Которые всегда перекрывают улицы, если указаны)
-    if (fullAddress.includes("сотников")) {
-      if (fullAddress.includes("полян")) return [getZone("sotnikovo_polyana")];
-      if (fullAddress.includes("родник") || fullAddress.includes("большая полян")) return [getZone("sotnikovo_rodniki")];
-      if (fullAddress.includes("гибдд") || fullAddress.includes("здоровье") || fullAddress.includes("колобк")) return [getZone("sotnikovo_gibdd")];
-      if (fullAddress.includes("церков") || fullAddress.includes("тухачевск") || fullAddress.includes("промышлен")) return [getZone("sotnikovo_tserkov")];
-      if (fullAddress.includes("багульник") || fullAddress.includes("овощевод") || fullAddress.includes("созвезди")) return [getZone("sotnikovo_bagulnik")];
-      if (fullAddress.includes("титан") || fullAddress.includes("респект")) return [getZone("sotnikovo_titan")];
-      return [getZone("sotnikovo_selenge")];
-    }
-    if (fullAddress.includes("посель")) return [getZone("poselye_rosneft")]; 
-    if (fullAddress.includes("исток")) return [fullAddress.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko")];
-    if (fullAddress.includes("солдатск")) return [getZone("soldatskiy")];
-    if (fullAddress.includes("аэропорт")) return [getZone("aeroport")];
-    if (fullAddress.includes("нурселени")) return [getZone("nurselenie")];
-    if (fullAddress.includes("иволгинск")) return [getZone("ivolginsk")];
-
-    // 2. ИЗВЛЕКАЕМ НОМЕР ДОМА
     let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
-    // 3. СПОРНЫЕ УЛИЦЫ (УМНЫЙ ВЫБОР ПО НОМЕРАМ ДОМОВ)
+    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
+    if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
+
+    const tulunzhaKWs = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "mраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
+    if (tulunzhaKWs.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
+
+    const suranzanKWs = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
+    if (suranzanKWs.some(kw => txt.includes(kw))) return [getZone("suranzan")];
+
+    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
+    if (gurulbaKWs.some(kw => txt.includes(kw))) return [getZone("gurulba")];
+
+    if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
+
     if (txt.includes("баргузинск")) {
       if (h > 0 && h <= 82) return [getZone("burvod")]; 
       if (h > 82) return [getZone("tsk_fabrika")]; 
@@ -429,22 +433,22 @@
         return [getZone("burvod"), getZone("leviy_bereg")];
     }
 
-    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН (НАШИ ПРАВИЛА В ПРИОРИТЕТЕ)
-    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
-    if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
+    if (fullAddress.includes("сотников")) {
+      if (fullAddress.includes("полян")) return [getZone("sotnikovo_polyana")];
+      if (fullAddress.includes("родник") || fullAddress.includes("большая полян")) return [getZone("sotnikovo_rodniki")];
+      if (fullAddress.includes("гибдд") || fullAddress.includes("здоровье") || fullAddress.includes("колобк")) return [getZone("sotnikovo_gibdd")];
+      if (fullAddress.includes("церков") || fullAddress.includes("тухачевск") || fullAddress.includes("промышлен")) return [getZone("sotnikovo_tserkov")];
+      if (fullAddress.includes("багульник") || fullAddress.includes("овощевод") || fullAddress.includes("созвезди")) return [getZone("sotnikovo_bagulnik")];
+      if (fullAddress.includes("титан") || fullAddress.includes("респект")) return [getZone("sotnikovo_titan")];
+      return [getZone("sotnikovo_selenge")];
+    }
+    if (fullAddress.includes("посель")) return [getZone("poselye_rosneft")]; 
+    if (fullAddress.includes("исток")) return [fullAddress.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko")];
+    if (fullAddress.includes("солдатск")) return [getZone("soldatskiy")];
+    if (fullAddress.includes("аэропорт")) return [getZone("aeroport")];
+    if (fullAddress.includes("нурселени")) return [getZone("nurselenie")];
+    if (fullAddress.includes("иволгинск")) return [getZone("ivolginsk")];
 
-    const tulunzhaKWs = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
-    if (tulunzhaKWs.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
-
-    const suranzanKWs = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
-    if (suranzanKWs.some(kw => txt.includes(kw))) return [getZone("suranzan")];
-
-    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
-    if (gurulbaKWs.some(kw => txt.includes(kw))) return [getZone("gurulba")];
-
-    if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
-
-    // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return [getZone("dnt_vesna_etc")];
     if (txt.includes("сибиряк") || txt.includes("стимул")) return [getZone("sibiryak_stimul")];
     if (txt.includes("дулан") || txt.includes("комсомольский")) return [getZone("dulan_ostrov")];
@@ -471,7 +475,6 @@
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
     if (txt.includes("трубачеев") || txt.includes("широких")) return [getZone("trubacheeva_do_mason")];
 
-    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
     if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
     if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
