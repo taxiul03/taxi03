@@ -1,9 +1,8 @@
-
-const CACHE_NAME = 'taxi-cache-v1';
+const CACHE_NAME = 'taxi-cache-v3';
 const urlsToCache = [
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.png'
 ];
 
 self.addEventListener('install', event => {
