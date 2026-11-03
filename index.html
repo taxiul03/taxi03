@@ -78,9 +78,6 @@
     .footer-bar .creator { color: #888; }
     .footer-bar .version { color: #4caf50; font-family: monospace; font-size: 12px; }
 
-    .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
-    #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
-    
     #installPwaBtn {
       display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center;
       font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px;
@@ -175,7 +172,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 029 | 03.11.2026</span>
+    <span class="version">Ver. 030 | 03.11.2026</span>
   </div>
   <div id="debugError"></div>
 </div>
@@ -201,8 +198,6 @@
     </div>
     <div class="disclaimer-text">
       <p>Данный программный продукт разработан исключительно в ознакомительных целях, для оттачивания навыков программирования и не является публичной офертой.</p>
-      <br>
-      <p>⚠️ Мы не несем ответственности, если вы случайно улетите в космос по тарифу Тулунжи или окажетесь в багажнике за лишние 50 рублей.</p>
       <p style="text-align: center; color: #4caf50; font-weight: bold; margin-top: 15px;">Всем ровных дорог и жирных заказов! 🚕💨</p>
     </div>
   </div>
@@ -228,14 +223,8 @@
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.update();
-    });
+    navigator.serviceWorker.register('sw.js').then(reg => { reg.update(); });
   }
-
-  window.addEventListener('error', function(event) {
-    document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
-  });
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
   const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
@@ -306,7 +295,7 @@
     { id: "berezovka_etno", name: "В. Березовка (Этномузей)", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
     { id: "berezovka_cvm", name: "В. Березовка (ЦВМ)", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
     { id: "berezovka_kulkison", name: "В. Березовка (Кулькисон)", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
-    { id: "zelenhoz", name: "Зеленхоз", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
+    { id: "zelenhoz", name: "Зеленhoz", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
     { id: "zeleniy", name: "Зеленый", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
     { id: "mashzavod", name: "Машзавод / Загорск", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
     { id: "vostochniy", name: "Восточный", group: "ГОРОД (ЖЕЛЕЗНОДОРОЖНЫЙ)" },
@@ -328,7 +317,7 @@
     { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" }
   ];
 
-  // ГЛОБАЛЬНЫЕ МАССИВЫ (Чтобы телефон не вис от тысяч массивов при наборе текста)
+  // ГЛОБАЛЬНЫЕ МАССИВЫ (Чтобы телефон не вис при наборе текста)
   const BURVOD_KWS = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
   const TULUNZHA_KWS = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
   const SURANZAN_KWS = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
@@ -379,8 +368,6 @@
   }
   loadPrices();
 
-  function getZone(id) { return ZONES.find(z => z.id === id); }
-
   function resolveZonesByText(txt, fullAddress = "") {
     if (!txt) return [];
     txt = txt.toLowerCase();
@@ -418,7 +405,7 @@
         return [getZone("trubacheeva_do_mason"), getZone("trubacheeva_ot_mason")]; 
     }
 
-    // 3. СПОРНЫЕ УЛИЦЫ (ПРОСЕЛОЧНАЯ УБРАНА ИЗ БУРВОДА)
+    // 3. СПОРНЫЕ УЛИЦЫ 
     if (txt.includes("проселочн")) {
       return [getZone("burvod"), getZone("verkh_ivolga"), getZone("ivolginsk")];
     }
@@ -462,12 +449,11 @@
         return [getZone("burvod"), getZone("leviy_bereg")];
     }
 
-    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН (ГЛОБАЛЬНЫЕ МАССИВЫ)
+    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН
     if (BURVOD_KWS.some(kw => txt.includes(kw))) return [getZone("burvod")];
     if (TULUNZHA_KWS.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
     if (SURANZAN_KWS.some(kw => txt.includes(kw))) return [getZone("suranzan")];
     if (GURULBA_KWS.some(kw => txt.includes(kw))) return [getZone("gurulba")];
-
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
 
     // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
@@ -496,7 +482,7 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
 
-    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ
+    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
     if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
     if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
@@ -504,7 +490,7 @@
     return []; 
   }
 
-  // --- ГОРОДСКОЙ ВВОД (Оптимизирован от зависаний) ---
+  // --- ГОРОДСКОЙ ВВОД (С ДЕТЕКТОРОМ ОШИБОК И ЛИМИТОВ) ---
   function setupCitySuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -526,7 +512,11 @@
             body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
           });
           
-          if (!res.ok) throw new Error("API Limit");
+          if (!res.ok) {
+              const statusText = await res.text();
+              throw new Error(`Ошибка API (Код: ${res.status}). Возможно, исчерпан лимит 10 000 запросов.`);
+          }
+          
           const data = await res.json();
           list.innerHTML = "";
           
@@ -561,11 +551,10 @@
              list.style.display = 'block';
           }
         } catch(e) {
-          // Если интернет пропал, выводим ручной выбор
-          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой поиска (Нет сети).<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
+          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ <b>СБОЙ СЕРВЕРА DADATA</b><br>${e.message}<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
           list.style.display = 'block';
         }
-      }, 500); // 500мс спасут телефон от зависания
+      }, 500); // Ожидание 0.5 секунд перед отправкой, чтобы не спамить API DaData
     });
   }
 
@@ -580,7 +569,6 @@
       clear.style.display = input.value.length > 0 ? 'flex' : 'none';
       clearTimeout(timer);
       const q = input.value.trim();
-      
       if (q.length < 2) { list.style.display = 'none'; return; }
 
       timer = setTimeout(async () => {
@@ -590,6 +578,9 @@
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
             body: JSON.stringify({ query: q, count: 5, locations: [{ region: "Бурятия" }] })
           });
+          
+          if (!res.ok) throw new Error("API Limit");
+          
           const data = await res.json();
           list.innerHTML = "";
           
@@ -609,7 +600,10 @@
             });
             if(list.innerHTML !== "") list.style.display = 'block';
           }
-        } catch(e) { }
+        } catch(e) { 
+           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой сервера DaData (Лимит).</div>`;
+           list.style.display = 'block';
+        }
       }, 500);
     });
   }
