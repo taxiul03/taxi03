@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Такси Местное</title>
-  <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogItCi0LDQutGB0Lgg0JzQtdGB0YLQvdC+0LUiLAogICJzaG9ydF9uYW1lIjogItCi0LDQutGB0Lgg0JzQtdGB0YLQvdC+0LUiLAogICJkZXNjcmlwdGlvbiI6ICLQmtCw0LvRjNC60YPQu9GP0YLQvtGAINGC0LDRgNC40YTQvtCyIHRheGkiLAogICJzdGFydF91cmwiOiAiLi8iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMxMjEyMTIiLAogICJ0aGVtZV9jb2xvciI6ICIjMTIxMjEyIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLDxzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB2aWV3Qm94PScwIDAgMTAwIDEwMCc+PHRleHQgeT0nLjltJyBmb250LXNpemU9JzkwJz7wn5qVPC90ZXh0Pjwvc3ZnPiIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+  <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#121212">
 
@@ -71,12 +71,30 @@
 
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
+    
+    /* Кнопка установки PWA */
+    #installPwaBtn {
+      display: none;
+      width: 100%;
+      padding: 12px;
+      background-color: #4caf50;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   <h1>🚕 ТАКСИ МЕСТНОЕ</h1>
+
+  <button id="installPwaBtn">📲 Установить приложение на телефон</button>
 
   <div class="route-box">
     <div class="input-wrapper">
@@ -124,7 +142,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 021 (PWA Edition)</span>
+    <span class="version">Ver. 022 (PWA) | 03.11.2026</span>
   </div>
   
   <div id="debugError"></div>
@@ -163,6 +181,35 @@
 </div>
 
 <script>
+  // --- ЛОГИКА PWA УСТАНОВКИ ---
+  let deferredPrompt;
+  const installBtn = document.getElementById('installPwaBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block'; // Показываем кнопку установки
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    }
+  });
+
+  // Регистрация Service Worker (необходима для PWA)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.log("Service Worker не зарегистрирован:", err);
+    });
+  }
+
+
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
@@ -316,14 +363,12 @@
   }
   loadPrices();
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 021) ---
+  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 022) ---
   function resolveZonesByText(txt, fullAddress = "") {
     if (!txt) return [];
     txt = txt.toLowerCase();
     fullAddress = fullAddress.toLowerCase();
     
-    let possibleZones = [];
-
     // --- ПЕРЕХВАТЧИК МИКРОРАЙОНОВ ПЕРЕД УЛИЦАМИ (ПРИОРИТЕТ 1) ---
     if (fullAddress.includes("сотников")) {
       if (fullAddress.includes("полян")) return [getZone("sotnikovo_polyana")];
@@ -370,7 +415,7 @@
       return [getZone("tulunzha"), getZone("gurulba")];
     }
     if (txt.includes("осенн")) {
-      return [getZone("tulunzha"), getZone("gurulba")]; // Номера сильно пересекаются
+      return [getZone("tulunzha"), getZone("gurulba")]; 
     }
     if (txt.includes("светл") || txt.includes("тепличн")) { 
         return [getZone("burvod"), getZone("gurulba")]; 
@@ -393,9 +438,11 @@
     }
 
     // --- 3. БАЗЫ УНИКАЛЬНЫХ УЛИЦ И ОРИЕНТИРОВ ---
-    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03"];
+    // Убрана Кабанская отсюда, т.к. это городская магистраль, проходящая через много зон
+    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
     if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
 
+    // Убрана Кабанская, оставлены локальные улицы
     const tulunzhaKWs = ["делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "якутск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
     if (tulunzhaKWs.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
 
@@ -407,6 +454,12 @@
 
     // СНТ Урожай
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
+    
+    // Кабанская магистраль
+    if (txt.includes("кабанск")) {
+        if (h > 0 && h <= 60) return [getZone("burvod")]; // Начало Кабанской
+        return [getZone("burvod"), getZone("leviy_bereg")]; // Общая проверка
+    }
 
     // --- 4. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ ---
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return [getZone("dnt_vesna_etc")];
@@ -426,7 +479,7 @@
     if (txt.includes("мелькомбинат")) return [getZone("melkombinat")];
 
     if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов") || txt.includes("жуковск")) return [getZone("shishkovka")];
-    if (txt.includes("пвз") || txt.includes("комсомольск") || txt.includes("чайковск")) return [getZone("pvz")];
+    if (txt.includes("пвз") || txt.includes("чайковск")) return [getZone("pvz")]; // Убрал комсомольскую
     if (txt.includes("гастелло")) return [getZone("mashzavod")];
     if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return [getZone("vostochniy")];
     if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ") || txt.includes("борсоев")) return [getZone("pl_sovetov")];
@@ -466,15 +519,12 @@
           
           if (data.suggestions && data.suggestions.length > 0) {
             data.suggestions.forEach(item => {
-              // Получаем полный адрес из DaData
               const fullAddressString = item.unrestricted_value || item.value;
               const district = item.data?.city_district || item.data?.settlement_with_type || '';
               
-              // Получаем МАССИВ возможных зон
               const zones = resolveZonesByText(item.value, fullAddressString);
               
               if (zones.length === 0) {
-                  // Зона неизвестна
                   const div = document.createElement('div');
                   div.className = 'suggestion-item';
                   div.innerHTML = `<b>${item.value}</b><small style="display:block; color:#aaa; margin-top:4px;">${district}</small>
@@ -486,7 +536,6 @@
                   };
                   list.appendChild(div);
               } else {
-                  // Для каждой найденной зоны создаем отдельную строку
                   zones.forEach(zone => {
                       const div = document.createElement('div');
                       div.className = 'suggestion-item';
@@ -602,8 +651,6 @@
       return;
     }
 
-    // --- ЛОГИКА ПОД-ЗОН (СНТ УРОЖАЙ И СНТ СУРАНЗАН) ---
-    // Если выбрали подзону, для матрицы берем базовую (Бурвод или Тулунжа)
     let matrixFromId = state.from.id;
     let matrixToId = state.to.id;
 
@@ -623,8 +670,6 @@
     let finalPrice = basePrice;
     let modsText = [];
 
-    // НАДБАВКА ЗА ВЫЕЗД ИЗ ПОД-ЗОНЫ (+50 руб)
-    // Если посадка в Урожае, а едем НЕ в Бурвод (и не в Левый Берег, Сибиряк и т.д. из этой группы)
     const burvodGroup = ["burvod", "leviy_bereg", "urozhay", "sibiryak_stimul", "dnt_vesna_etc", "dulan_ostrov", "cheremushki", "uchhoz"];
     const tulunzhaGroup = ["tulunzha", "suranzan", "mir"];
 
@@ -640,7 +685,6 @@
         modsText.push("📍 Доплата (СНТ Суранзан) (+50₽)");
     }
 
-    // Опции
     if (state.delivery) { finalPrice += 150; modsText.push("📦 Услуга доставки"); }
     if (state.stop) { finalPrice += 100; modsText.push("🛑 Непопутный заезд (+100₽)"); }
     if (state.luggage) { finalPrice += 50; modsText.push("🧳 Габаритный багаж (+50₽)"); }
