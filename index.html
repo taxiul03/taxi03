@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Такси Местное</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#00A82F">
   
   <style>
@@ -76,21 +74,6 @@
 
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
-    
-    #installPwaBtn {
-      display: none;
-      width: 100%;
-      padding: 12px;
-      background-color: #00A82F;
-      color: white;
-      text-align: center;
-      font-weight: bold;
-      border-radius: 12px;
-      margin-bottom: 15px;
-      cursor: pointer;
-      border: 1.5px solid #00c739;
-      font-size: 14px;
-    }
   </style>
 </head>
 <body>
@@ -102,8 +85,6 @@
     <a href="tel:700077">📞 70-00-77</a>
     <a href="tel:404040">📞 40-40-40</a>
   </div>
-
-  <button id="installPwaBtn">📲 Установить на экран телефона</button>
 
   <div class="route-box">
     <div class="input-wrapper">
@@ -151,7 +132,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 025 | 03.11.2026</span>
+    <span class="version">Ver. 025 (Web) | 03.11.2026</span>
   </div>
   
   <div id="debugError"></div>
@@ -190,34 +171,6 @@
 </div>
 
 <script>
-  let deferredPrompt;
-  const installBtn = document.getElementById('installPwaBtn');
-
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.style.display = 'block';
-  });
-
-  installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        installBtn.style.display = 'none';
-      }
-      deferredPrompt = null;
-    }
-  });
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      reg.update();
-    }).catch(err => {
-      console.log("SW Error:", err);
-    });
-  }
-
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
@@ -248,7 +201,7 @@
     { id: "poselye_rosneft", name: "Поселье (Роснефть / Начало)", group: "ПОСЕЛЬЕ И ИСТОК" },
     { id: "poselye_shkola", name: "Поселье (до Новой Школы)", group: "ПОСЕЛЬЕ И ИСТОК" },
     { id: "poselye_baris", name: "Поселье (до Бариса)", group: "ПОСЕЛЬЕ И ИСТОК" },
-    { id: "poselye_baris_500m", name: "Поселье (от Бариса 500m)", group: "ПОСЕЛЬЕ И ИСТОК" },
+    { id: "poselye_baris_500m", name: "Поселье (от Бариса 500м)", group: "ПОСЕЛЬЕ И ИСТОК" },
     { id: "poselye_edem", name: "Поселье (до Эдема / Родника)", group: "ПОСЕЛЬЕ И ИСТОК" },
     { id: "poselye_konechnaya", name: "Поселье (Дальнее)", group: "ПОСЕЛЬЕ И ИСТОК" },
     { id: "stroybaza_istok", name: "Стройбаза Исток", group: "ПОСЕЛЬЕ И ИСТОК" },
@@ -475,4 +428,236 @@
     if (txt.includes("гастелло")) return [getZone("mashzavod")];
     if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return [getZone("vostochniy")];
     if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ") || txt.includes("борсоев")) return [getZone("pl_sovetov")];
-    if (txt.includes("рынок") || txt.includes("свердлов") || txt.includes
+    if (txt.includes("рынок") || txt.includes("свердлов") || txt.includes("банзаров") || txt.includes("куйбышев")) return [getZone("centr_rynok")];
+    if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
+    if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
+    if (txt.includes("трубачеев") || txt.includes("широких")) return [getZone("trubacheeva_do_mason")];
+
+    // 5. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
+    if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
+    if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
+    if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
+
+    return []; 
+  }
+
+  function setupDaDataSuggest(type) {
+    const input = document.getElementById(`${type}Input`);
+    const list = document.getElementById(`${type}List`);
+    const clear = document.getElementById(`${type}Clear`);
+    let timer;
+
+    input.addEventListener('input', () => {
+      clear.style.display = input.value.length > 0 ? 'flex' : 'none';
+      clearTimeout(timer);
+      const q = input.value.trim();
+      
+      if (q.length < 2) { list.style.display = 'none'; return; }
+
+      timer = setTimeout(async () => {
+        try {
+          const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
+            body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
+          });
+          
+          if (!res.ok) throw new Error("DaData не ответила");
+
+          const data = await res.json();
+          list.innerHTML = "";
+          
+          if (data.suggestions && data.suggestions.length > 0) {
+            data.suggestions.forEach(item => {
+              const fullAddressString = item.unrestricted_value || item.value;
+              const district = item.data?.city_district || item.data?.settlement_with_type || '';
+              
+              const zones = resolveZonesByText(item.value, fullAddressString);
+              
+              if (zones.length === 0) {
+                  const div = document.createElement('div');
+                  div.className = 'suggestion-item';
+                  div.innerHTML = `<b>${item.value}</b><small style="display:block; color:#aaa; margin-top:4px;">${district}</small>
+                                   <span class="suggestion-zone-tag" style="color:#ef5350;">(Нажмите, чтобы выбрать район)</span>`;
+                  div.onclick = () => {
+                    input.value = item.value;
+                    list.style.display = 'none';
+                    openModal(type); 
+                  };
+                  list.appendChild(div);
+              } else {
+                  zones.forEach(zone => {
+                      const div = document.createElement('div');
+                      div.className = 'suggestion-item';
+                      div.innerHTML = `<b>${item.value}</b><small style="display:block; color:#aaa; margin-top:4px;">${district}</small>
+                                       <span class="suggestion-zone-tag">📍 Район: ${zone.name}</span>`;
+                      div.onclick = () => {
+                        input.value = item.value;
+                        list.style.display = 'none';
+                        setZone(type, zone); 
+                      };
+                      list.appendChild(div);
+                  });
+              }
+            });
+            list.style.display = 'block';
+          } else {
+             list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px; text-align:center;">Адрес не найден.<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ ИЗ СПИСКА 📋</b></div>`;
+             list.style.display = 'block';
+          }
+        } catch(e) {
+          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой поиска (Нет сети).<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
+          list.style.display = 'block';
+        }
+      }, 350);
+    });
+  }
+
+  setupDaDataSuggest('from');
+  setupDaDataSuggest('to');
+
+  function setZone(type, zone) {
+    state[type] = zone;
+    document.getElementById(`${type}ZoneName`).innerText = zone.name;
+    document.getElementById(`${type}Badge`).style.display = 'flex';
+  }
+
+  function clearInput(type) {
+    document.getElementById(`${type}Input`).value = '';
+    document.getElementById(`${type}Clear`).style.display = 'none';
+    document.getElementById(`${type}List`).style.display = 'none';
+    document.getElementById(`${type}Badge`).style.display = 'none';
+    state[type] = null;
+    document.getElementById('resultCard').style.display = 'none';
+  }
+
+  let modalTarget = null;
+  
+  function openModal(target) {
+    modalTarget = target;
+    document.getElementById('zoneSearchInput').value = '';
+    renderModalList('');
+    document.getElementById('modal').style.display = 'flex';
+  }
+
+  function closeModal() { 
+      document.getElementById('modal').style.display = 'none'; 
+  }
+
+  function filterZones() {
+    const query = document.getElementById('zoneSearchInput').value.toLowerCase();
+    renderModalList(query);
+  }
+
+  function renderModalList(filterQuery) {
+    const l = document.getElementById('modalList');
+    l.innerHTML = '';
+    
+    let currentGroup = '';
+    let hasResults = false;
+
+    ZONES.forEach(z => {
+      if (filterQuery && !z.name.toLowerCase().includes(filterQuery) && !z.group.toLowerCase().includes(filterQuery)) {
+        return; 
+      }
+      
+      hasResults = true;
+
+      if (z.group !== currentGroup) {
+        currentGroup = z.group;
+        const header = document.createElement('div');
+        header.className = 'modal-group';
+        header.innerText = currentGroup;
+        l.appendChild(header);
+      }
+      const d = document.createElement('div');
+      d.className = 'modal-item'; 
+      d.innerText = z.name;
+      d.onclick = () => { setZone(modalTarget, z); closeModal(); };
+      l.appendChild(d);
+    });
+
+    if (!hasResults) {
+        l.innerHTML = '<div style="padding:20px; text-align:center; color:#888;">Район не найден</div>';
+    }
+  }
+
+  function openDisclaimer() { document.getElementById('disclaimerModal').style.display = 'flex'; }
+  function closeDisclaimer() { document.getElementById('disclaimerModal').style.display = 'none'; }
+
+  function toggleOpt(optId) {
+    const el = document.getElementById(optId);
+    el.classList.toggle('active');
+    if (optId === 'optNight') state.night = !state.night;
+    if (optId === 'optStop') state.stop = !state.stop;
+    if (optId === 'optLuggage') state.luggage = !state.luggage;
+    if (optId === 'optDelivery') state.delivery = !state.delivery;
+  }
+
+  function calculate() {
+    const card = document.getElementById('resultCard');
+    if (!state.from || !state.to) {
+      alert("Выберите начальный и конечный район (кнопка 📋 или подсказка)");
+      return;
+    }
+
+    let matrixFromId = state.from.id;
+    let matrixToId = state.to.id;
+
+    if (matrixFromId === "urozhay") matrixFromId = "burvod";
+    if (matrixToId === "urozhay") matrixToId = "burvod";
+    if (matrixFromId === "suranzan") matrixFromId = "tulunzha";
+    if (matrixToId === "suranzan") matrixToId = "tulunzha";
+
+    let basePrice = priceMatrix[`${matrixFromId}_${matrixToId}`];
+
+    if (!basePrice) {
+      card.innerHTML = `<div class="route-title">${state.from.name} ➔ ${state.to.name}</div><div class="error-msg">Тариф уточняется у диспетчера.</div>`;
+      card.style.display = 'block';
+      return;
+    }
+
+    let finalPrice = basePrice;
+    let modsText = [];
+
+    const burvodGroup = ["burvod", "leviy_bereg", "urozhay", "sibiryak_stimul", "dnt_vesna_etc", "dulan_ostrov", "cheremushki", "uchhoz"];
+    const tulunzhaGroup = ["tulunzha", "suranzan", "mir"];
+
+    if ((state.from.id === "urozhay" && !burvodGroup.includes(state.to.id)) || 
+        (state.to.id === "urozhay" && !burvodGroup.includes(state.from.id))) {
+        finalPrice += 50;
+        modsText.push("📍 Доплата (СНТ Урожай) (+50₽)");
+    }
+
+    if ((state.from.id === "suranzan" && !tulunzhaGroup.includes(state.to.id)) || 
+        (state.to.id === "suranzan" && !tulunzhaGroup.includes(state.from.id))) {
+        finalPrice += 50;
+        modsText.push("📍 Доплата (СНТ Суранзан) (+50₽)");
+    }
+
+    if (state.delivery) { finalPrice += 150; modsText.push("📦 Услуга доставки"); }
+    if (state.stop) { finalPrice += 100; modsText.push("🛑 Непопутный заезд (+100₽)"); }
+    if (state.luggage) { finalPrice += 50; modsText.push("🧳 Габаритный багаж (+50₽)"); }
+    
+    const leftBank = ["tulunzha", "suranzan", "mir", "gurulba", "burvod", "leviy_bereg", "urozhay", "sibiryak_stimul", "dnt_vesna_etc", "dulan_ostrov", "cheremushki", "uchhoz", "sotnikovo_selenge", "sotnikovo_bagulnik", "sotnikovo_titan", "sotnikovo_tserkov", "sotnikovo_rodniki", "sotnikovo_gibdd", "sotnikovo_polyana", "poselye_rosneft", "poselye_shkola", "poselye_baris", "poselye_baris_500m", "poselye_edem", "poselye_konechnaya", "stroybaza_istok", "istok_solnyshko", "istok_mirnaya_baris", "istok_dalee_karyer", "soldatskiy", "aeroport", "nurselenie"];
+    
+    if (state.night) {
+      if (leftBank.includes(matrixFromId) && leftBank.includes(matrixToId)) {
+        finalPrice += 50;
+        modsText.push("🌙 Ночь/Погода (Местная) (+50₽)");
+      } else {
+        finalPrice += 100;
+        modsText.push("🌙 Ночь/Погода (Дальняя) (+100₽)");
+      }
+    }
+
+    card.innerHTML = `
+      <div class="route-title">${state.from.name} <br>⬇<br> ${state.to.name}</div>
+      <div class="price-tag">${finalPrice} ₽</div>
+      ${modsText.length > 0 ? `<div class="modifiers-list">${modsText.join('<br>')}</div>` : ''}
+    `;
+    card.style.display = 'block';
+  }
+</script>
+</body>
+</html>
