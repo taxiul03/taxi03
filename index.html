@@ -20,7 +20,6 @@
     .header-phones a { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 10px; background: #00A82F; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 800; border: 1.5px solid #00c739; transition: 0.2s; }
     .header-phones a:active { background: #008f27; }
 
-    /* Переключатель режимов */
     .mode-switch { display: flex; background: #2c2c2c; border-radius: 12px; margin-bottom: 16px; overflow: hidden; border: 1px solid #3d3d3d; }
     .mode-tab { flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 700; color: #888; cursor: pointer; transition: 0.3s; }
     .mode-tab.active { background: #ffb300; color: #121212; }
@@ -75,11 +74,19 @@
     .modal-item { padding: 14px 20px; font-size: 15px; border-bottom: 1px solid #282828; cursor: pointer; color: #ddd; }
     
     .status-text { text-align: center; font-size: 12px; font-weight: bold; color: #777; margin-bottom: 10px; }
+    .disclaimer-link { text-align: center; font-size: 12px; color: #888; text-decoration: underline; cursor: pointer; margin-bottom: 14px; }
+    
     .footer-bar { display: flex; justify-content: space-between; border-top: 1px solid #333; padding-top: 12px; font-size: 11px; color: #666; font-weight: 600; }
     .footer-bar .creator { color: #888; }
     .footer-bar .version { color: #4caf50; font-family: monospace; font-size: 12px; }
 
-    #installPwaBtn { display: none; }
+    .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
+    #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
+    
+    #installPwaBtn {
+      display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center;
+      font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -91,6 +98,8 @@
     <a href="tel:700077">📞 70-00-77</a>
     <a href="tel:404040">📞 40-40-40</a>
   </div>
+
+  <button id="installPwaBtn">📲 Установить на экран телефона</button>
 
   <div class="mode-switch">
     <div class="mode-tab active" id="tabCity" onclick="switchMode('city')">ГОРОД / ПРИГОРОД</div>
@@ -162,20 +171,17 @@
     <button class="btn-calc" onclick="calculateIntercity()" id="btnInterCalc">РАССЧИТАТЬ МЕЖГОРОД</button>
   </div>
 
-  <!-- ОБЩИЙ РЕЗУЛЬТАТ -->
   <div id="resultCard" class="result-card"></div>
-  
   <div class="status-text" id="statusText">Загрузка базы тарифов...</div>
+  <div class="disclaimer-link" onclick="openDisclaimer()">📜 Правовая оговорка (Disclaimer)</div>
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 027 | 03.11.2026</span>
+    <span class="version">Ver. 028 | 03.11.2026</span>
   </div>
-  
   <div id="debugError"></div>
 </div>
 
-<!-- МОДАЛКА ВЫБОРА РАЙОНА -->
 <div id="modal" class="modal-overlay">
   <div class="modal-box">
     <div class="modal-header">
@@ -189,46 +195,62 @@
   </div>
 </div>
 
+<div id="disclaimerModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span style="color: #ffb300;">⚠️ Внимание!</span>
+      <span style="cursor:pointer; color:#888;" onclick="closeDisclaimer()">✕ ЗАКРЫТЬ</span>
+    </div>
+    <div class="disclaimer-text">
+      <p>Данный программный продукт разработан исключительно в ознакомительных целях, для оттачивания навыков программирования и не является публичной офертой.</p>
+      <br>
+      <p>⚠️ Мы не несем ответственности, если вы случайно улетите в космос по тарифу Тулунжи или окажетесь в багажнике за лишние 50 рублей.</p>
+      <p style="text-align: center; color: #4caf50; font-weight: bold; margin-top: 15px;">Всем ровных дорог и жирных заказов! 🚕💨</p>
+    </div>
+  </div>
+</div>
+
 <script>
+  let deferredPrompt;
+  const installBtn = document.getElementById('installPwaBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') { installBtn.style.display = 'none'; }
+      deferredPrompt = null;
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.update();
+    });
+  }
+
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
   const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
-  
-  // Координаты Ленина 61, Улан-Удэ
   const ORIGIN_LAT = 51.826723;
   const ORIGIN_LON = 107.584163;
 
-  // Фиксированные цены на Межгород
   const INTERCITY_PRICES = {
-    "листвянка": 18000,
-    "озеро изумрудное": 13000,
-    "танхой": 8700,
-    "байкальский прибой": 5300,
-    "энхалук": 5900,
-    "ильинка": 2500,
-    "кабанск": 4100,
-    "озеро торма": 2400,
-    "торма": 2400,
-    "тарбагатай": 2100,
-    "мухоршибирь": 4400,
-    "щучье озеро": 4000,
-    "гусиное озеро": 5800,
-    "кяхта": 8100,
-    "петровск-забайкальский": 7500,
-    "тунка": 16500,
-    "турунтаево": 2300,
-    "гремячинск": 5500,
-    "турка": 6100,
-    "горячинск": 6800,
-    "усть-баргузин": 9300,
-    "баргузин": 11700,
-    "курумкан": 15200,
-    "хоринск": 6200,
-    "нарын-ацагат": 2200,
-    "ацагат": 2200
+    "листвянка": 18000, "озеро изумрудное": 13000, "танхой": 8700, "байкальский прибой": 5300,
+    "энхалук": 5900, "ильинка": 2500, "кабанск": 4100, "озеро торма": 2400, "торма": 2400,
+    "тарбагатай": 2100, "мухоршибирь": 4400, "щучье озеро": 4000, "гусиное озеро": 5800,
+    "кяхта": 8100, "петровск-забайкальский": 7500, "тунка": 16500, "турунтаево": 2300,
+    "гремячинск": 5500, "турка": 6100, "горячинск": 6800, "усть-баргузин": 9300,
+    "баргузин": 11700, "курумкан": 15200, "хоринск": 6200, "нарын-ацагат": 2200, "ацагат": 2200
   };
 
   let currentMode = 'city';
@@ -308,10 +330,15 @@
     { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" }
   ];
 
+  // ГЛОБАЛЬНЫЕ МАССИВЫ (Вынесены для оптимизации памяти и устранения зависаний)
+  const BURVOD_KWS = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
+  const TULUNZHA_KWS = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
+  const SURANZAN_KWS = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
+  const GURULBA_KWS = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
+
   function switchMode(mode) {
     currentMode = mode;
     document.getElementById('resultCard').style.display = 'none';
-    
     if(mode === 'city') {
       document.getElementById('tabCity').classList.add('active');
       document.getElementById('tabIntercity').classList.remove('active');
@@ -332,7 +359,6 @@
       const csv = await res.text();
       const lines = csv.split('\n');
       const headers = lines[0].split(',').map(c => c.trim().toLowerCase());
-
       for (let i = 1; i < lines.length; i++) {
         const row = lines[i].trim().split(',').map(c => c.trim().toLowerCase());
         const rowId = row[0];
@@ -357,7 +383,6 @@
 
   function getZone(id) { return ZONES.find(z => z.id === id); }
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН (V27) ---
   function resolveZonesByText(txt, fullAddress = "") {
     if (!txt) return [];
     txt = txt.toLowerCase();
@@ -366,7 +391,7 @@
     let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
-    // 0. АБСОЛЮТНЫЙ ПРИОРИТЕТ ДРУГИХ СЁЛ (Защита от дубликатов)
+    // 0. АБСОЛЮТНЫЙ ПРИОРИТЕТ ДРУГИХ СЁЛ
     if (fullAddress.includes("нижн") && (fullAddress.includes("иволг") || fullAddress.includes("иволга"))) return [getZone("nizh_ivolga")];
     if (fullAddress.includes("верхн") && (fullAddress.includes("иволг") || fullAddress.includes("иволга"))) return [getZone("verkh_ivolga")];
     if (fullAddress.includes("с иволгинск") || fullAddress.includes("с. иволгинск") || fullAddress.includes("село иволгинск")) return [getZone("ivolginsk")];
@@ -440,18 +465,10 @@
     }
 
     // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН
-    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
-    if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
-
-    const tulunzhaKWs = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
-    if (tulunzhaKWs.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
-
-    const suranzanKWs = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
-    if (suranzanKWs.some(kw => txt.includes(kw))) return [getZone("suranzan")];
-
-    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
-    if (gurulbaKWs.some(kw => txt.includes(kw))) return [getZone("gurulba")];
-
+    if (BURVOD_KWS.some(kw => txt.includes(kw))) return [getZone("burvod")];
+    if (TULUNZHA_KWS.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
+    if (SURANZAN_KWS.some(kw => txt.includes(kw))) return [getZone("suranzan")];
+    if (GURULBA_KWS.some(kw => txt.includes(kw))) return [getZone("gurulba")];
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
 
     // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
@@ -480,7 +497,7 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
 
-    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
+    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ
     if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
     if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
@@ -488,7 +505,10 @@
     return []; 
   }
 
-  // --- ГОРОДСКОЙ ВВОД (DADATA) ---
+  // ОБЪЕКТЫ ДЛЯ ОТМЕНЫ ПРЕДЫДУЩИХ ЗАПРОСОВ К СЕРВЕРУ
+  let cityControllerFrom = null;
+  let cityControllerTo = null;
+
   function setupCitySuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -498,16 +518,27 @@
     input.addEventListener('input', () => {
       clear.style.display = input.value.length > 0 ? 'flex' : 'none';
       clearTimeout(timer);
+      
+      if (type === 'from' && cityControllerFrom) cityControllerFrom.abort();
+      if (type === 'to' && cityControllerTo) cityControllerTo.abort();
+
       const q = input.value.trim();
       if (q.length < 2) { list.style.display = 'none'; return; }
 
       timer = setTimeout(async () => {
+        const controller = new AbortController();
+        if (type === 'from') cityControllerFrom = controller;
+        if (type === 'to') cityControllerTo = controller;
+
         try {
           const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
             method: "POST",
+            signal: controller.signal,
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
             body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
           });
+          
+          if (!res.ok) throw new Error("DaData не ответила");
           const data = await res.json();
           list.innerHTML = "";
           
@@ -536,13 +567,20 @@
               }
             });
             list.style.display = 'block';
+          } else {
+             list.innerHTML = `<div style="padding:12px; color:#aaa; font-size:13px; text-align:center;">Адрес не найден.<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ ИЗ СПИСКА 📋</b></div>`;
+             list.style.display = 'block';
           }
-        } catch(e) {}
-      }, 350);
+        } catch(e) {
+          if (e.name === 'AbortError') return; // Игнорируем отмененные запросы
+          list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой поиска (Нет сети).<br><br><b style="color:#ffb300; text-decoration:underline; cursor:pointer;" onclick="openModal('${type}'); document.getElementById('${type}List').style.display='none';">ВЫБРАТЬ РАЙОН ВРУЧНУЮ 📋</b></div>`;
+          list.style.display = 'block';
+        }
+      }, 300);
     });
   }
 
-  // --- МЕЖГОРОДСКОЙ ВВОД (DADATA) ---
+  let interController = null;
   function setupIntercitySuggest() {
     const input = document.getElementById('interInput');
     const list = document.getElementById('interList');
@@ -552,13 +590,17 @@
     input.addEventListener('input', () => {
       clear.style.display = input.value.length > 0 ? 'flex' : 'none';
       clearTimeout(timer);
+      if (interController) interController.abort();
+      
       const q = input.value.trim();
       if (q.length < 2) { list.style.display = 'none'; return; }
 
       timer = setTimeout(async () => {
+        interController = new AbortController();
         try {
           const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
             method: "POST",
+            signal: interController.signal,
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
             body: JSON.stringify({ query: q, count: 5, locations: [{ region: "Бурятия" }] })
           });
@@ -581,8 +623,10 @@
             });
             if(list.innerHTML !== "") list.style.display = 'block';
           }
-        } catch(e) {}
-      }, 350);
+        } catch(e) {
+            if (e.name === 'AbortError') return;
+        }
+      }, 300);
     });
   }
 
@@ -628,6 +672,7 @@
     const l = document.getElementById('modalList');
     l.innerHTML = '';
     let currentGroup = '';
+    
     ZONES.forEach(z => {
       if (filterQuery && !z.name.toLowerCase().includes(filterQuery) && !z.group.toLowerCase().includes(filterQuery)) return; 
       if (z.group !== currentGroup) {
@@ -645,6 +690,9 @@
     });
   }
 
+  function openDisclaimer() { document.getElementById('disclaimerModal').style.display = 'flex'; }
+  function closeDisclaimer() { document.getElementById('disclaimerModal').style.display = 'none'; }
+
   function toggleOpt(optId) {
     const el = document.getElementById(optId);
     el.classList.toggle('active');
@@ -658,7 +706,7 @@
   // --- РАСЧЕТ ПО ГОРОДУ ---
   function calculateCity() {
     const card = document.getElementById('resultCard');
-    if (!state.from || !state.to) { alert("Выберите районы"); return; }
+    if (!state.from || !state.to) { alert("Выберите начальный и конечный район (кнопка 📋 или подсказка)"); return; }
 
     let mFrom = state.from.id;
     let mTo = state.to.id;
@@ -688,9 +736,9 @@
         finalPrice += 50; modsText.push("📍 Доплата (СНТ Суранзан) (+50₽)");
     }
 
-    if (state.delivery) { finalPrice += 150; modsText.push("📦 Доставка"); }
-    if (state.stop) { finalPrice += 100; modsText.push("🛑 Заезд (+100₽)"); }
-    if (state.luggage) { finalPrice += 50; modsText.push("🧳 Багаж (+50₽)"); }
+    if (state.delivery) { finalPrice += 150; modsText.push("📦 Услуга доставки"); }
+    if (state.stop) { finalPrice += 100; modsText.push("🛑 Непопутный заезд (+100₽)"); }
+    if (state.luggage) { finalPrice += 50; modsText.push("🧳 Габаритный багаж (+50₽)"); }
     
     if (state.night) {
       const leftBank = ["tulunzha", "suranzan", "mir", "gurulba", "burvod", "leviy_bereg", "urozhay", "sibiryak_stimul", "dnt_vesna_etc", "dulan_ostrov", "cheremushki", "uchhoz", "sotnikovo_selenge", "sotnikovo_bagulnik", "sotnikovo_titan", "sotnikovo_tserkov", "sotnikovo_rodniki", "sotnikovo_gibdd", "sotnikovo_polyana", "poselye_rosneft", "poselye_shkola", "poselye_baris", "poselye_baris_500m", "poselye_edem", "poselye_konechnaya", "stroybaza_istok", "istok_solnyshko", "istok_mirnaya_baris", "istok_dalee_karyer", "soldatskiy", "aeroport", "nurselenie"];
