@@ -7,7 +7,8 @@
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#00A82F">
-  
+  <link rel="apple-touch-icon" href="icon.png">
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: #121212; color: #ffffff; display: flex; justify-content: center; padding: 10px; padding-bottom: 40px; }
@@ -38,7 +39,7 @@
     .manual-btn:active { background: #444; border-color: #ffb300; }
     
     .clear-btn { position: absolute; right: 58px; top: 12px; width: 24px; height: 24px; background: #444; color: #fff; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 12px; font-weight: bold; cursor: pointer; display: none; z-index: 10; }
-    .intercity-clear { right: 12px; } /* Для межгорода, где нет ручной кнопки */
+    .intercity-clear { right: 12px; }
 
     .suggestions { position: absolute; top: 100%; left: 0; right: 56px; background: #2c2c2c; border: 1px solid #444; border-radius: 10px; max-height: 250px; overflow-y: auto; z-index: 100; box-shadow: 0 10px 25px rgba(0,0,0,0.8); display: none; margin-top: 4px; }
     .suggestions.full-width { right: 0; }
@@ -78,7 +79,10 @@
     .footer-bar .creator { color: #888; }
     .footer-bar .version { color: #4caf50; font-family: monospace; font-size: 12px; }
 
-    #installPwaBtn { display: none; }
+    #installPwaBtn {
+      display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center;
+      font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -90,6 +94,8 @@
     <a href="tel:700077">📞 70-00-77</a>
     <a href="tel:404040">📞 40-40-40</a>
   </div>
+
+  <button id="installPwaBtn">📲 Установить на экран телефона</button>
 
   <div class="mode-switch">
     <div class="mode-tab active" id="tabCity" onclick="switchMode('city')">ГОРОД / ПРИГОРОД</div>
@@ -154,6 +160,10 @@
       </div>
     </div>
     
+    <div class="options-grid" style="margin-bottom: 16px;">
+      <div class="option-btn" id="optMinivan" onclick="toggleOpt('optMinivan')">🚐 Минивэн (+500₽)</div>
+    </div>
+    
     <button class="btn-calc" onclick="calculateIntercity()" id="btnInterCalc">РАССЧИТАТЬ МЕЖГОРОД</button>
   </div>
 
@@ -178,13 +188,37 @@
       <span style="cursor:pointer; color:#ffb300;" onclick="closeModal()">✕ ЗАКРЫТЬ</span>
     </div>
     <div class="modal-search">
-      <input type="text" id="zoneSearchInput" placeholder="🔍 Поиск района..." autocomplete="off" oninput="filterZones()">
+      <input type="text" id="zoneSearchInput" placeholder="🔍 Поиск района (напр. Бурвод)..." autocomplete="off" oninput="filterZones()">
     </div>
     <div class="modal-list" id="modalList"></div>
   </div>
 </div>
 
 <script>
+  let deferredPrompt;
+  const installBtn = document.getElementById('installPwaBtn');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'block';
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') { installBtn.style.display = 'none'; }
+      deferredPrompt = null;
+    }
+  });
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      reg.update();
+    });
+  }
+
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
   });
@@ -196,9 +230,39 @@
   const ORIGIN_LAT = 51.826723;
   const ORIGIN_LON = 107.584163;
 
+  // Фиксированные цены на Межгород
+  const INTERCITY_PRICES = {
+    "листвянка": 18000,
+    "озеро изумрудное": 13000,
+    "танхой": 8700,
+    "байкальский прибой": 5300,
+    "энхалук": 5900,
+    "ильинка": 2500,
+    "кабанск": 4100,
+    "озеро торма": 2400,
+    "торма": 2400,
+    "тарбагатай": 2100,
+    "мухоршибирь": 4400,
+    "щучье озеро": 4000,
+    "гусиное озеро": 5800,
+    "кяхта": 8100,
+    "петровск-забайкальский": 7500,
+    "тунка": 16500,
+    "турунтаево": 2300,
+    "гремячинск": 5500,
+    "турка": 6100,
+    "горячинск": 6800,
+    "усть-баргузин": 9300,
+    "баргузин": 11700,
+    "курумкан": 15200,
+    "хоринск": 6200,
+    "нарын-ацагат": 2200,
+    "ацагат": 2200
+  };
+
   let currentMode = 'city';
   let priceMatrix = {};
-  let state = { from: null, to: null, night: false, stop: false, luggage: false, delivery: false };
+  let state = { from: null, to: null, night: false, stop: false, luggage: false, delivery: false, minivan: false };
   let intercityData = { lat: null, lon: null, addressName: "" };
 
   const ZONES = [
@@ -270,11 +334,7 @@
     { id: "myasokombinat", name: "Мясокомбинат", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "melkombinat", name: "Мелькомбинат", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "zverosovhoz", name: "Зверосовхоз", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
-    { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
-    { id: "nizh_ivolga", name: "Нижняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
-    { id: "ivolginsk", name: "Иволгинск", group: "ИВОЛГИНСКИЙ РАЙОН" },
-    { id: "verkh_ivolga", name: "Верхняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
-    { id: "edemik", name: "Эдэмик", group: "ИВОЛГИНСКИЙ РАЙОН" }
+    { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" }
   ];
 
   function switchMode(mode) {
@@ -335,7 +395,7 @@
     let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
-    // 0. АБСОЛЮТНЫЙ ПРИОРИТЕТ ДРУГИХ СЁЛ (Защита от дубликатов улиц)
+    // 0. АБСОЛЮТНЫЙ ПРИОРИТЕТ ДРУГИХ СЁЛ
     if (fullAddress.includes("нижн") && fullAddress.includes("иволг")) return [getZone("nizh_ivolga")];
     if (fullAddress.includes("верхн") && fullAddress.includes("иволг")) return [getZone("verkh_ivolga")];
     if (fullAddress.includes("с. иволгинск") || (fullAddress.includes("иволгинск") && !fullAddress.includes("днт"))) return [getZone("ivolginsk")];
@@ -363,8 +423,8 @@
         return [getZone("trubacheeva_do_mason"), getZone("trubacheeva_ot_mason")];
     }
 
-    // 3. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН (НАШИ ПРАВИЛА)
-    const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
+    // 3. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН
+    const burvodKWs = ["проселочн", "ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
     if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
 
     const tulunzhaKWs = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
@@ -445,6 +505,11 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
 
+    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ
+    if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
+    if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
+    if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
+
     return []; 
   }
 
@@ -520,7 +585,6 @@
           const res = await fetch("https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": "Token " + DADATA_TOKEN },
-            // Для межгорода ищем по всей Бурятии
             body: JSON.stringify({ query: q, count: 5, locations: [{ region: "Бурятия" }] })
           });
           const data = await res.json();
@@ -528,7 +592,6 @@
           
           if (data.suggestions && data.suggestions.length > 0) {
             data.suggestions.forEach(item => {
-              // Нам нужны координаты для OSRM
               if(item.data && item.data.geo_lat && item.data.geo_lon) {
                   const div = document.createElement('div');
                   div.className = 'suggestion-item';
@@ -614,6 +677,7 @@
     if (optId === 'optStop') state.stop = !state.stop;
     if (optId === 'optLuggage') state.luggage = !state.luggage;
     if (optId === 'optDelivery') state.delivery = !state.delivery;
+    if (optId === 'optMinivan') state.minivan = !state.minivan;
   }
 
   // --- РАСЧЕТ ПО ГОРОДУ ---
@@ -679,8 +743,28 @@
     const card = document.getElementById('resultCard');
     btn.innerText = "Считаем маршрут...";
     
+    let destNameLC = intercityData.addressName.toLowerCase();
+    let matchedPrice = 0;
+    
+    for (let key in INTERCITY_PRICES) {
+        if (destNameLC.includes(key)) {
+            matchedPrice = INTERCITY_PRICES[key];
+            break;
+        }
+    }
+
+    let minivanAdd = state.minivan ? 500 : 0;
+    
+    if (matchedPrice > 0) {
+        card.innerHTML = `<div class="route-title">Центр (Ленина, 61) <br>⬇<br> ${intercityData.addressName}</div>
+                          <div class="price-tag">${matchedPrice + minivanAdd} ₽</div>
+                          <div class="modifiers-list">Фиксированный тариф<br>${state.minivan ? '🚐 Минивэн (+500₽)' : ''}</div>`;
+        card.style.display = 'block';
+        btn.innerText = "РАССЧИТАТЬ МЕЖГОРОД";
+        return;
+    }
+
     try {
-        // Запрос к бесплатному серверу OSRM для автомобильного маршрута
         const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN_LON},${ORIGIN_LAT};${intercityData.lon},${intercityData.lat}?overview=false`;
         const res = await fetch(url);
         const data = await res.json();
@@ -693,17 +777,16 @@
         let finalPrice = 0;
         
         if (distKm <= 100) {
-            finalPrice = Math.round(distKm * 37);
-        } else {
             finalPrice = Math.round(distKm * 40);
+        } else {
+            finalPrice = Math.round(distKm * 37);
         }
         
-        // Округляем до десятков (например 3742 -> 3740 или 3750)
         finalPrice = Math.round(finalPrice / 10) * 10;
         
         card.innerHTML = `<div class="route-title">Центр (Ленина, 61) <br>⬇<br> ${intercityData.addressName}</div>
-                          <div class="price-tag">${finalPrice} ₽</div>
-                          <div class="modifiers-list">Расстояние: ${distKm.toFixed(1)} км<br>Тариф: ${distKm <= 100 ? '37' : '40'} ₽/км</div>`;
+                          <div class="price-tag">${finalPrice + minivanAdd} ₽</div>
+                          <div class="modifiers-list">Расстояние: ${distKm.toFixed(1)} км<br>Тариф: ${distKm <= 100 ? '40' : '37'} ₽/км<br>${state.minivan ? '🚐 Минивэн (+500₽)' : ''}</div>`;
         card.style.display = 'block';
 
     } catch (e) {
