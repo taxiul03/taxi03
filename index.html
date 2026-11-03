@@ -7,6 +7,7 @@
   <link rel="manifest" href="manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#121212">
+  <link rel="apple-touch-icon" href="icon.svg">
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -72,7 +73,6 @@
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
     
-    /* Кнопка установки PWA */
     #installPwaBtn {
       display: none;
       width: 100%;
@@ -142,7 +142,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 022 (PWA) | 03.11.2026</span>
+    <span class="version">Ver. 023 | 03.11.2026</span>
   </div>
   
   <div id="debugError"></div>
@@ -188,7 +188,7 @@
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.style.display = 'block'; // Показываем кнопку установки
+    installBtn.style.display = 'block';
   });
 
   installBtn.addEventListener('click', async () => {
@@ -202,13 +202,11 @@
     }
   });
 
-  // Регистрация Service Worker (необходима для PWA)
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => {
-      console.log("Service Worker не зарегистрирован:", err);
+      console.log("SW Error:", err);
     });
   }
-
 
   window.addEventListener('error', function(event) {
     document.getElementById('debugError').innerText += " Сбой JS: " + event.message + ". ";
@@ -363,13 +361,13 @@
   }
   loadPrices();
 
-  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 022) ---
+  // --- ЯДРО ОПРЕДЕЛЕНИЯ ЗОН ПО УЛИЦАМ (ВЕРСИЯ 023) ---
   function resolveZonesByText(txt, fullAddress = "") {
     if (!txt) return [];
     txt = txt.toLowerCase();
     fullAddress = fullAddress.toLowerCase();
-    
-    // --- ПЕРЕХВАТЧИК МИКРОРАЙОНОВ ПЕРЕД УЛИЦАМИ (ПРИОРИТЕТ 1) ---
+
+    // 1. СТРОГИЕ МИКРОРАЙОНЫ (Которые всегда перекрывают улицы, если указаны)
     if (fullAddress.includes("сотников")) {
       if (fullAddress.includes("полян")) return [getZone("sotnikovo_polyana")];
       if (fullAddress.includes("родник") || fullAddress.includes("большая полян")) return [getZone("sotnikovo_rodniki")];
@@ -381,19 +379,16 @@
     }
     if (fullAddress.includes("посель")) return [getZone("poselye_rosneft")]; 
     if (fullAddress.includes("исток")) return [fullAddress.includes("строй") ? getZone("stroybaza_istok") : getZone("istok_solnyshko")];
-    if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
-    if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("солдатск")) return [getZone("soldatskiy")];
     if (fullAddress.includes("аэропорт")) return [getZone("aeroport")];
     if (fullAddress.includes("нурселени")) return [getZone("nurselenie")];
     if (fullAddress.includes("иволгинск")) return [getZone("ivolginsk")];
-    if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
 
-    // --- 1. ИЗВЛЕКАЕМ НОМЕР ДОМА ---
+    // 2. ИЗВЛЕКАЕМ НОМЕР ДОМА
     let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
-    // --- 2. СПОРНЫЕ УЛИЦЫ (УМНЫЙ ВЫБОР) ---
+    // 3. СПОРНЫЕ УЛИЦЫ (УМНЫЙ ВЫБОР ПО НОМЕРАМ ДОМОВ)
     if (txt.includes("баргузинск")) {
       if (h > 0 && h <= 82) return [getZone("burvod")]; 
       if (h > 82) return [getZone("tsk_fabrika")]; 
@@ -429,39 +424,27 @@
     if (txt.includes("лугов")) {
       return [getZone("tulunzha"), getZone("gurulba")];
     }
-    
-    // Спорные улицы Тулунжи (остальные)
-    if (txt.includes("акшинск") || txt.includes("подгорн") || txt.includes("орлин") || 
-        txt.includes("дамбов") || txt.includes("40 лет победы") || txt.includes("гэгэтуйск") || 
-        txt.includes("песочн") || txt.includes("мраморн")) {
-        return [getZone("tulunzha")]; 
+    if (txt.includes("кабанск")) {
+        if (h > 0 && h <= 60) return [getZone("burvod")];
+        return [getZone("burvod"), getZone("leviy_bereg")];
     }
 
-    // --- 3. БАЗЫ УНИКАЛЬНЫХ УЛИЦ И ОРИЕНТИРОВ ---
-    // Убрана Кабанская отсюда, т.к. это городская магистраль, проходящая через много зон
+    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН (НАШИ ПРАВИЛА В ПРИОРИТЕТЕ)
     const burvodKWs = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
     if (burvodKWs.some(kw => txt.includes(kw))) return [getZone("burvod")];
 
-    // Убрана Кабанская, оставлены локальные улицы
-    const tulunzhaKWs = ["делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "якутск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
+    const tulunzhaKWs = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
     if (tulunzhaKWs.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
 
     const suranzanKWs = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
     if (suranzanKWs.some(kw => txt.includes(kw))) return [getZone("suranzan")];
 
-    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "иволгинск", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
+    const gurulbaKWs = ["гурульб", "самарск", "цветочн", "ясн", "снежн", "сквозн", "юности", "соснов", "бодонгутск", "золотист", "м.в. андреева", "успешн", "кусотинск", "хуриганов", "шарагинск", "приречн", "московск", "полев", "советск", "летн", "овражн", "речн", "огородн", "сельск", "ангархаев", "набережн", "ивахинов", "мечты", "мира", "верхн", "д.ш. фролов", "мунко саридак", "саганск", "молодежн", "саянск", "тункинск", "дружбы", "зимн", "весенн", "ивов", "озёрн", "нагорн", "осинск", "школьн", "плодов"];
     if (gurulbaKWs.some(kw => txt.includes(kw))) return [getZone("gurulba")];
 
-    // СНТ Урожай
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
-    
-    // Кабанская магистраль
-    if (txt.includes("кабанск")) {
-        if (h > 0 && h <= 60) return [getZone("burvod")]; // Начало Кабанской
-        return [getZone("burvod"), getZone("leviy_bereg")]; // Общая проверка
-    }
 
-    // --- 4. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ ---
+    // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return [getZone("dnt_vesna_etc")];
     if (txt.includes("сибиряк") || txt.includes("стимул")) return [getZone("sibiryak_stimul")];
     if (txt.includes("дулан") || txt.includes("комсомольский")) return [getZone("dulan_ostrov")];
@@ -479,7 +462,7 @@
     if (txt.includes("мелькомбинат")) return [getZone("melkombinat")];
 
     if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов") || txt.includes("жуковск")) return [getZone("shishkovka")];
-    if (txt.includes("пвз") || txt.includes("чайковск")) return [getZone("pvz")]; // Убрал комсомольскую
+    if (txt.includes("пвз") || txt.includes("чайковск")) return [getZone("pvz")]; 
     if (txt.includes("гастелло")) return [getZone("mashzavod")];
     if (txt.includes("восточн") || txt.includes("туполев") || txt.includes("королев")) return [getZone("vostochniy")];
     if (txt.includes("советов") || txt.includes("сухэ-батор") || txt.includes("ербанов") || txt.includes("ленин") || txt.includes("смолин") || txt.includes("коммунистическ") || txt.includes("борсоев")) return [getZone("pl_sovetov")];
@@ -487,6 +470,11 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
     if (txt.includes("трубачеев") || txt.includes("широких")) return [getZone("trubacheeva_do_mason")];
+
+    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
+    if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
+    if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
+    if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
 
     return []; 
   }
