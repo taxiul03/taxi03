@@ -87,7 +87,10 @@
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
     
-    #installPwaBtn { display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center; font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px; }
+    #installPwaBtn {
+      display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center;
+      font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px;
+    }
   </style>
 </head>
 <body>
@@ -188,7 +191,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 033 | 03.11.2026</span>
+    <span class="version">Ver. 035 | 03.11.2026</span>
   </div>
   <div id="debugError"></div>
 </div>
@@ -248,16 +251,7 @@
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
   const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
-
-  const INTERCITY_PRICES = {
-    "листвянка": 18000, "озеро изумрудное": 13000, "танхой": 8700, "байкальский прибой": 5300,
-    "энхалук": 5900, "ильинка": 2500, "кабанск": 4100, "озеро торма": 2400, "торма": 2400,
-    "тарбагатай": 2100, "мухоршибирь": 4400, "щучье озеро": 4000, "гусиное озеро": 5800,
-    "кяхта": 8100, "петровск-забайкальский": 7500, "тунка": 16500, "турунтаево": 2300,
-    "гремячинск": 5500, "турка": 6100, "горячинск": 6800, "усть-баргузин": 9300,
-    "баргузин": 11700, "курумкан": 15200, "хоринск": 6200, "нарын-ацагат": 2200, "ацагат": 2200
-  };
-
+  
   let currentMode = 'city';
   let priceMatrix = {};
   let state = { from: null, to: null, night: false, stop: false, luggage: false, delivery: false, minivan: false };
@@ -336,33 +330,7 @@
     { id: "nizh_ivolga", name: "Нижняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
     { id: "ivolginsk", name: "Иволгинск", group: "ИВОЛГИНСКИЙ РАЙОН" },
     { id: "verkh_ivolga", name: "Верхняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
-    { id: "edemik", name: "Эдэмик", group: "ИВОЛГИНСКИЙ РАЙОН" },
-    { id: "voznesenovka", name: "Вознесеновка (Тарбаг.)", group: "ТАРБАГАТАЙСКИЙ РАЙОН" },
-    { id: "nizh_sayantuy", name: "Н. Саянтуй / Вахмистрово", group: "ТАРБАГАТАЙСКИЙ РАЙОН" },
-    { id: "ilinka", name: "Ильинка", group: "МЕЖГОРОД" },
-    { id: "turuntaevo", name: "Турунтаево", group: "МЕЖГОРОД" },
-    { id: "naryn_atsagat", name: "Нарын-Ацагат", group: "МЕЖГОРОД" },
-    { id: "ozero_torma", name: "Озеро Торма", group: "МЕЖГОРОД" },
-    { id: "tarbagatay", name: "Тарбагатай", group: "МЕЖГОРОД" },
-    { id: "kabansk", name: "Кабанск", group: "МЕЖГОРОД" },
-    { id: "schuchye_ozero", name: "Щучье озеро", group: "МЕЖГОРОД" },
-    { id: "muhorshibir", name: "Мухоршибирь", group: "МЕЖГОРОД" },
-    { id: "baykalskiy_priboy", name: "Байкальский прибой", group: "МЕЖГОРОД" },
-    { id: "gremyachinsk", name: "Гремячинск", group: "МЕЖГОРОД" },
-    { id: "enhaluk", name: "Энхалук", group: "МЕЖГОРОД" },
-    { id: "turka", name: "Турка", group: "МЕЖГОРОД" },
-    { id: "gusinoe_ozero", name: "Гусиное озеро", group: "МЕЖГОРОД" },
-    { id: "goryachinsk", name: "Горячинск", group: "МЕЖГОРОД" },
-    { id: "petrovsk_zabaykalskiy", name: "Петровск-Забайкальский", group: "МЕЖГОРОД" },
-    { id: "kyahta", name: "Кяхта", group: "МЕЖГОРОД" },
-    { id: "tanhoy", name: "Танхой", group: "МЕЖГОРОД" },
-    { id: "ust_barguzin", name: "Усть-Баргузин", group: "МЕЖГОРОД" },
-    { id: "barguzin", name: "Баргузин", group: "МЕЖГОРОД" },
-    { id: "ozero_izumrudnoe", name: "Озеро Изумрудное", group: "МЕЖГОРОД" },
-    { id: "kurumkan", name: "Курумкан", group: "МЕЖГОРОД" },
-    { id: "tunka", name: "Тунка", group: "МЕЖГОРОД" },
-    { id: "horinsk", name: "Хоринск", group: "МЕЖГОРОД" },
-    { id: "listvyanka", name: "Листвянка", group: "МЕЖГОРОД" }
+    { id: "edemik", name: "Эдэмик", group: "ИВОЛГИНСКИЙ РАЙОН" }
   ];
 
   function getZone(id) { 
@@ -742,7 +710,7 @@
     card.style.display = 'block';
   }
 
-  // --- РАСЧЕТ МЕЖГОРОД (ТОЧНЫЕ КООРДИНАТЫ ПОДАЧИ) ---
+  // --- РАСЧЕТ МЕЖГОРОД (ТОЧНЫЕ КООРДИНАТЫ ПОДАЧИ, БЕЗ ФИКСОВ) ---
   async function calculateIntercity() {
     if(!intercityData.lat || !intercityData.lon) {
         alert("Выберите конечный пункт из выпадающего списка!");
@@ -759,23 +727,10 @@
     const originLon = originVal[1];
     const originText = selectEl.options[selectEl.selectedIndex].text;
     const shortOrigin = originText.split('(')[0].trim();
-    
-    let destNameLC = intercityData.addressName.toLowerCase();
-    let matchedPrice = 0;
-    
-    // Строгая проверка по целым словам (чтобы Кабанский район не считался Кабанском)
-    for (let key in INTERCITY_PRICES) {
-        let regex = new RegExp(`(^|[^а-яё])` + key + `([^а-яё]|$)`, 'i');
-        if (regex.test(destNameLC)) {
-            matchedPrice = INTERCITY_PRICES[key];
-            break;
-        }
-    }
 
     let minivanAdd = state.minivan ? 500 : 0;
     
     try {
-        // Прокладываем точный маршрут через бесплатный OSRM
         const url = `https://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${intercityData.lon},${intercityData.lat}?overview=false`;
         const res = await fetch(url);
         const data = await res.json();
@@ -785,23 +740,13 @@
         }
         
         const distKm = data.routes[0].distance / 1000;
-        let finalPrice = 0;
-        let note = "";
         
-        // Если есть фикс-прайс, используем его, но все равно показываем реальный пробег
-        if (matchedPrice > 0) {
-            finalPrice = matchedPrice;
-            note = `Фиксированный тариф<br>Расстояние: ~${distKm.toFixed(1)} км`;
-        } else {
-            if (distKm <= 100) {
-                finalPrice = Math.round(distKm * 40);
-                note = `Расстояние: ${distKm.toFixed(1)} км<br>Тариф: 40 ₽/км`;
-            } else {
-                finalPrice = Math.round(distKm * 37);
-                note = `Расстояние: ${distKm.toFixed(1)} км<br>Тариф: 37 ₽/км`;
-            }
-            finalPrice = Math.round(finalPrice / 10) * 10;
-        }
+        // СТРОГИЙ РАСЧЕТ: КИЛОМЕТРАЖ * 40
+        let finalPrice = Math.round(distKm * 40);
+        let note = `Расстояние: ${distKm.toFixed(1)} км<br>Тариф: 40 ₽/км`;
+        
+        // Округляем до десятков
+        finalPrice = Math.round(finalPrice / 10) * 10;
         
         if (state.minivan) note += "<br>🚐 Минивэн (+500₽)";
         
@@ -811,17 +756,8 @@
         card.style.display = 'block';
 
     } catch (e) {
-        // Если навигатор отвалился, но есть фикс-прайс - выдаем его. Иначе ошибку.
-        if (matchedPrice > 0) {
-            let note = `Фиксированный тариф${state.minivan ? '<br>🚐 Минивэн (+500₽)' : ''}`;
-            card.innerHTML = `<div class="route-title">${shortOrigin} <br>⬇<br> ${intercityData.addressName}</div>
-                              <div class="price-tag">${matchedPrice + minivanAdd} ₽</div>
-                              <div class="modifiers-list">${note}</div>`;
-            card.style.display = 'block';
-        } else {
-            card.innerHTML = `<div class="error-msg">Не удалось проложить автомобильный маршрут. Уточните адрес.</div>`;
-            card.style.display = 'block';
-        }
+        card.innerHTML = `<div class="error-msg">Не удалось проложить автомобильный маршрут. Уточните адрес.</div>`;
+        card.style.display = 'block';
     } finally {
         btn.innerText = "РАССЧИТАТЬ МЕЖГОРОД";
     }
