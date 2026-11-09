@@ -31,8 +31,12 @@
     label { display: block; font-size: 11px; font-weight: 700; color: #aaaaaa; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
     
     .input-row { display: flex; gap: 8px; position: relative; }
-    .input-row input { flex: 1; width: 100%; height: 48px; font-size: 15px; padding: 0 38px 0 12px; background: #1e1e1e; border: 1.5px solid #3d3d3d; border-radius: 10px; color: #fff; outline: none; transition: 0.2s; }
-    .input-row input:focus { border-color: #ffb300; }
+    .input-row input, .input-row select { flex: 1; width: 100%; height: 48px; font-size: 15px; padding: 0 38px 0 12px; background: #1e1e1e; border: 1.5px solid #3d3d3d; border-radius: 10px; color: #fff; outline: none; transition: 0.2s; }
+    .input-row input:focus, .input-row select:focus { border-color: #ffb300; }
+    
+    .select-wrapper { position: relative; width: 100%; display: flex; }
+    .select-wrapper select { padding-right: 30px; font-size: 13.5px; font-weight: 600; appearance: none; -webkit-appearance: none; }
+    .select-wrapper::after { content: '▼'; position: absolute; right: 14px; top: 16px; color: #ffb300; font-size: 12px; pointer-events: none; }
     
     .manual-btn { width: 48px; height: 48px; background: #2c2c2c; border: 1.5px solid #3d3d3d; border-radius: 10px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 18px; flex-shrink: 0; transition: 0.2s; }
     .manual-btn:active { background: #444; border-color: #ffb300; }
@@ -60,7 +64,7 @@
     .result-card { background: #2c2c2c; border-radius: 16px; padding: 18px; text-align: center; border: 1px solid #444; display: none; margin-bottom: 16px; }
     .route-title { font-size: 14px; font-weight: 600; color: #aaa; margin-bottom: 8px; line-height: 1.4; }
     .price-tag { font-size: 44px; font-weight: 900; color: #4caf50; margin-bottom: 8px; }
-    .modifiers-list { font-size: 12px; color: #ffb300; font-weight: 600; }
+    .modifiers-list { font-size: 12px; color: #ffb300; font-weight: 600; line-height: 1.4; }
     .error-msg { font-size: 14px; font-weight: 600; color: #ef5350; line-height: 1.4; }
 
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 200; padding: 16px; }
@@ -83,10 +87,7 @@
     .disclaimer-text { padding: 20px; font-size: 13px; color: #ccc; line-height: 1.6; text-align: justify; overflow-y: auto; }
     #debugError { text-align: center; font-size: 10px; color: #ef5350; margin-top: 10px; font-family: monospace; }
     
-    #installPwaBtn {
-      display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center;
-      font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px;
-    }
+    #installPwaBtn { display: none; width: 100%; padding: 12px; background-color: #00A82F; color: white; text-align: center; font-weight: bold; border-radius: 12px; margin-bottom: 15px; cursor: pointer; border: 1.5px solid #00c739; font-size: 14px; }
   </style>
 </head>
 <body>
@@ -151,10 +152,20 @@
   <!-- БЛОК МЕЖГОРОДА -->
   <div id="intercityBlock" style="display: none;">
     <div class="route-box">
+      
       <div class="input-wrapper">
-        <label style="color:#ffb300;">Начало: Улан-Удэ, ул. Ленина, 61 (Центр)</label>
+        <label style="color:#ffb300;">Откуда едем (Точка подачи авто)</label>
+        <div class="input-row select-wrapper">
+          <select id="intercityOrigin" onchange="clearIntercityResult()">
+            <option value="51.826723,107.584163">Центр Города (ул. Ленина, 61)</option>
+            <option value="51.831000,107.477200">Тулунжа / Барис (40 лет Победы, 10а)</option>
+            <option value="51.844094,107.545000">Бурвод / Абсолют (ул. Строителей, 17)</option>
+            <option value="51.839846,107.503884">Азия Трак (ул. Автотранспортная, 29)</option>
+          </select>
+        </div>
       </div>
-      <div class="input-wrapper" style="margin-top:10px;">
+
+      <div class="input-wrapper" style="margin-top:14px;">
         <label>Куда едем (Населенный пункт)</label>
         <div class="input-row">
           <input type="text" id="interInput" placeholder="Название села, района..." autocomplete="off">
@@ -177,7 +188,7 @@
 
   <div class="footer-bar">
     <span class="creator">Created by Sheriff ✮</span>
-    <span class="version">Ver. 032 | 03.11.2026</span>
+    <span class="version">Ver. 033 | 03.11.2026</span>
   </div>
   <div id="debugError"></div>
 </div>
@@ -237,8 +248,6 @@
 
   const SHEET_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQHu-EA0NLrnj4qi0WdxqGdxWkeAgk2zkHrhHuc-hgPOx_lqH3azS3ZNL9dCZVZTyQm6tmP5C3wzHBi/pub?gid=0&single=true&output=csv";
   const DADATA_TOKEN = "f6de0218d864f50421bc96a22ea7f12942978a17";
-  const ORIGIN_LAT = 51.826723;
-  const ORIGIN_LON = 107.584163;
 
   const INTERCITY_PRICES = {
     "листвянка": 18000, "озеро изумрудное": 13000, "танхой": 8700, "байкальский прибой": 5300,
@@ -324,8 +333,6 @@
     { id: "melkombinat", name: "Мелькомбинат", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "zverosovhoz", name: "Зверосовхоз", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
     { id: "sosnoviy_bor", name: "Сосновый Бор", group: "ГОРОД (ОКТЯБРЬСКИЙ)" },
-    
-    // ВАЖНО: ВОТ ТЕ САМЫЕ ЗОНЫ, КОТОРЫЕ БЫЛИ УТЕРЯНЫ В ПРОШЛОЙ ВЕРСИИ
     { id: "nizh_ivolga", name: "Нижняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
     { id: "ivolginsk", name: "Иволгинск", group: "ИВОЛГИНСКИЙ РАЙОН" },
     { id: "verkh_ivolga", name: "Верхняя Иволга", group: "ИВОЛГИНСКИЙ РАЙОН" },
@@ -362,7 +369,6 @@
       return ZONES.find(z => z.id === id); 
   }
 
-  // ГЛОБАЛЬНЫЕ МАССИВЫ УЛИЦ
   const BURVOD_KWS = ["ваи", "мерецков", "автомагистральн", "обручев", "республиканск", "подстанцион", "донск", "соловьин", "толстихин", "урожайн", "степн", "кубанск", "российск", "казачь", "кипрейн", "централь", "ольхонск", "ходонск", "хангильск", "лощенков", "турецк", "белокамен", "слободск", "курск", "измайловск", "далахайск", "красночикойск", "карельск", "петропавловск", "нурск", "голубичн", "независим", "лиговск", "ледов", "рукавишников", "учебн", "лицей 61", "школа 44", "поликлиника 1", "забайкалспецодежда", "азиятрак", "регион03", "оазис"];
   const TULUNZHA_KWS = ["якутск", "акшинск", "подгорн", "орлин", "дамбов", "40 лет победы", "гэгэтуйск", "песочн", "мраморн", "делов", "смоленск", "охотск", "правд", "начальн", "апельсинов", "современников", "княжеск", "тихомирск", "приозёрн", "добрынин", "алексея рогозинск", "богатырск", "боярск", "императорск", "дальнегурульбинск", "ноябрьск", "юбилейн", "полянск", "радужн", "крылат", "алтайск", "кооперативн", "международн", "гранитн", "полынн", "золотарников", "саранков", "икатск", "звездопадн", "магаданск", "сахалинск", "уссурийск", "владивостокск", "хабаровск", "благовещенск", "читинск", "улан-удэнск", "иркутск", "томск", "норильск", "красноярск", "амурск", "ангарск", "тобольск", "эковата байкал", "магазин ирис"];
   const SURANZAN_KWS = ["суранзан", "комсомольск", "пионерск", "саган-нурск", "олон-шибирск", "окинск", "посольск"];
@@ -382,6 +388,10 @@
       document.getElementById('intercityBlock').style.display = 'block';
       document.getElementById('cityBlock').style.display = 'none';
     }
+  }
+
+  function clearIntercityResult() {
+    document.getElementById('resultCard').style.display = 'none';
   }
 
   async function loadPrices() {
@@ -421,12 +431,10 @@
     let match = fullAddress.match(/д\s*(\d+)/i) || fullAddress.match(/(\d+)/);
     let h = match ? parseInt(match[1], 10) : 0;
 
-    // 0. АБСОЛЮТНЫЙ ПРИОРИТЕТ ДРУГИХ СЁЛ
     if (fullAddress.includes("нижн") && (fullAddress.includes("иволг") || fullAddress.includes("иволга"))) return [getZone("nizh_ivolga")];
     if (fullAddress.includes("верхн") && (fullAddress.includes("иволг") || fullAddress.includes("иволга"))) return [getZone("verkh_ivolga")];
     if (fullAddress.includes("с иволгинск") || fullAddress.includes("с. иволгинск") || fullAddress.includes("село иволгинск")) return [getZone("ivolginsk")];
 
-    // 1. СТРОГИЕ МИКРОРАЙОНЫ И ПРИГОРОДЫ
     if (fullAddress.includes("сотников") || (txt.includes("магистральн") && !txt.includes("автомагистральн"))) {
       if (fullAddress.includes("полян")) return [getZone("sotnikovo_polyana")];
       if (fullAddress.includes("родник") || fullAddress.includes("большая полян")) return [getZone("sotnikovo_rodniki")];
@@ -443,72 +451,36 @@
     if (fullAddress.includes("аэропорт")) return [getZone("aeroport")];
     if (fullAddress.includes("нурселени")) return [getZone("nurselenie")];
 
-    // 2. ГОРОДСКИЕ УЛИЦЫ С ТОЧНЫМ РАЗДЕЛЕНИЕМ ПО НОМЕРАМ
     if (txt.includes("трубачеев") || txt.includes("широких")) {
         if (h >= 146) return [getZone("trubacheeva_ot_mason")]; 
         if (h > 0 && h < 146) return [getZone("trubacheeva_do_mason")]; 
         return [getZone("trubacheeva_do_mason"), getZone("trubacheeva_ot_mason")]; 
     }
 
-    // 3. СПОРНЫЕ УЛИЦЫ 
-    if (txt.includes("проселочн")) {
-      return [getZone("burvod"), getZone("verkh_ivolga"), getZone("ivolginsk")];
-    }
-    if (txt.includes("баргузинск")) {
-      if (h > 0 && h <= 82) return [getZone("burvod")]; 
-      if (h > 82) return [getZone("tsk_fabrika")]; 
-      return [getZone("burvod"), getZone("tsk_fabrika")];
-    }
-    if (txt.includes("можайск")) {
-      if (h > 0 && h <= 38) return [getZone("tulunzha")]; 
-      if (h > 38) return [getZone("mashzavod")]; 
-      return [getZone("tulunzha"), getZone("mashzavod")];
-    }
-    if (txt.includes("трудов")) {
-      if (h > 0 && h <= 35) return [getZone("tulunzha")];
-      if (h >= 65) return [getZone("gurulba")];
-      return [getZone("tulunzha"), getZone("gurulba")];
-    }
-    if (txt.includes("садов")) {
-      if (h >= 34 && h <= 41) return [getZone("tulunzha")];
-      if (h > 0 && h <= 33) return [getZone("gurulba")];
-      return [getZone("tulunzha"), getZone("gurulba")];
-    }
-    if (txt.includes("осенн")) {
-      return [getZone("tulunzha"), getZone("gurulba")]; 
-    }
-    if (txt.includes("светл") || txt.includes("тепличн")) { 
-        return [getZone("burvod"), getZone("gurulba")]; 
-    }
-    if (txt.includes("боевая") || txt.includes("боев")) {
-        return [getZone("gurulba"), getZone("tsk_fabrika")];
-    }
-    if (txt.includes("заречн") || txt.includes("дорожн")) {
-      return [getZone("burvod"), getZone("gurulba")];
-    }
-    if (txt.includes("лугов")) {
-      return [getZone("tulunzha"), getZone("gurulba")];
-    }
-    if (txt.includes("кабанск")) {
-        if (h > 0 && h <= 60) return [getZone("burvod")];
-        return [getZone("burvod"), getZone("leviy_bereg")];
-    }
+    if (txt.includes("проселочн")) return [getZone("burvod"), getZone("verkh_ivolga"), getZone("ivolginsk")];
+    if (txt.includes("баргузинск")) return h > 0 && h <= 82 ? [getZone("burvod")] : h > 82 ? [getZone("tsk_fabrika")] : [getZone("burvod"), getZone("tsk_fabrika")];
+    if (txt.includes("можайск")) return h > 0 && h <= 38 ? [getZone("tulunzha")] : h > 38 ? [getZone("mashzavod")] : [getZone("tulunzha"), getZone("mashzavod")];
+    if (txt.includes("трудов")) return h > 0 && h <= 35 ? [getZone("tulunzha")] : h >= 65 ? [getZone("gurulba")] : [getZone("tulunzha"), getZone("gurulba")];
+    if (txt.includes("садов")) return h >= 34 && h <= 41 ? [getZone("tulunzha")] : h > 0 && h <= 33 ? [getZone("gurulba")] : [getZone("tulunzha"), getZone("gurulba")];
+    if (txt.includes("осенн")) return [getZone("tulunzha"), getZone("gurulba")]; 
+    if (txt.includes("светл") || txt.includes("тепличн")) return [getZone("burvod"), getZone("gurulba")]; 
+    if (txt.includes("боевая") || txt.includes("боев")) return [getZone("gurulba"), getZone("tsk_fabrika")];
+    if (txt.includes("заречн") || txt.includes("дорожн")) return [getZone("burvod"), getZone("gurulba")];
+    if (txt.includes("лугов")) return [getZone("tulunzha"), getZone("gurulba")];
+    if (txt.includes("кабанск")) return h > 0 && h <= 60 ? [getZone("burvod")] : [getZone("burvod"), getZone("leviy_bereg")];
 
-    // 4. УНИКАЛЬНЫЕ УЛИЦЫ НАШИХ ЗОН
     if (BURVOD_KWS.some(kw => txt.includes(kw))) return [getZone("burvod")];
     if (TULUNZHA_KWS.some(kw => txt.includes(kw))) return [getZone("tulunzha")];
     if (SURANZAN_KWS.some(kw => txt.includes(kw))) return [getZone("suranzan")];
     if (GURULBA_KWS.some(kw => txt.includes(kw))) return [getZone("gurulba")];
     if (txt.includes("урожай") || txt.includes("чайка")) return [getZone("urozhay")];
 
-    // 5. ОСТАЛЬНЫЕ ГОРОДСКИЕ ПРОВЕРКИ
     if (txt.includes("весна") || txt.includes("коммунальник") || txt.includes("20 лет победы")) return [getZone("dnt_vesna_etc")];
     if (txt.includes("сибиряк") || txt.includes("стимул")) return [getZone("sibiryak_stimul")];
     if (txt.includes("дулан") || txt.includes("комсомольский")) return [getZone("dulan_ostrov")];
     if (txt.includes("черемушки")) return [getZone("cheremushki")];
     if (txt.includes("левый берег")) return [getZone("leviy_bereg")];
     if (txt.includes("мир")) return [getZone("mir")];
-    
     if (txt.includes("140") || txt.includes("142")) return [getZone("140_140a_kv")];
     if (txt.includes("102") || txt.includes("103") || txt.includes("104")) return [getZone("102_104_kv")];
     if (txt.includes("105") || txt.includes("106")) return [getZone("105_106_kv")];
@@ -517,7 +489,6 @@
     if (txt.includes("саян") || txt.includes("тск") || txt.includes("фабрик") || txt.includes("терешков") || txt.includes("бабушкин") || txt.includes("ключевск")) return [getZone("tsk_fabrika")];
     if (txt.includes("мясокомбинат")) return [getZone("myasokombinat")];
     if (txt.includes("мелькомбинат")) return [getZone("melkombinat")];
-
     if (txt.includes("шишковк") || txt.includes("гагарин") || txt.includes("добролюбов") || txt.includes("жуковск")) return [getZone("shishkovka")];
     if (txt.includes("пвз") || txt.includes("чайковск")) return [getZone("pvz")]; 
     if (txt.includes("гастелло")) return [getZone("mashzavod")];
@@ -527,7 +498,6 @@
     if (txt.includes("вокзал") || txt.includes("революции 1905") || txt.includes("цивилев") || txt.includes("хахалов")) return [getZone("vokzal")];
     if (txt.includes("республиканск") || txt.includes("павлов") || txt.includes("пирогов")) return [getZone("resp_bolnitsa")];
 
-    // 6. НЕЧЕТКИЕ МАКРОРАЙОНЫ (Применяются только если ни одна улица не подошла)
     if (fullAddress.includes("гурульб")) return [getZone("gurulba")];
     if (fullAddress.includes("тулунж")) return [getZone("tulunzha")];
     if (fullAddress.includes("загорск") || fullAddress.includes("машзавод")) return [getZone("mashzavod")];
@@ -535,7 +505,6 @@
     return []; 
   }
 
-  // --- ГОРОДСКОЙ ВВОД ---
   function setupCitySuggest(type) {
     const input = document.getElementById(`${type}Input`);
     const list = document.getElementById(`${type}List`);
@@ -557,10 +526,7 @@
             body: JSON.stringify({ query: q, count: 6, locations: [{ region: "Бурятия", area: "Иволгинский" }, { region: "Бурятия", city: "Улан-Удэ" }] })
           });
           
-          if (!res.ok) {
-              const statusText = await res.text();
-              throw new Error(`Ошибка API (Код: ${res.status}). Возможно, исчерпан лимит 10 000 запросов.`);
-          }
+          if (!res.ok) throw new Error(`Ошибка API (Код: ${res.status}). Возможно, исчерпан лимит 10 000 запросов.`);
           
           const data = await res.json();
           list.innerHTML = "";
@@ -580,7 +546,6 @@
                   div.onclick = () => { input.value = item.value; list.style.display = 'none'; openModal(type); };
                   list.appendChild(div);
               } else {
-                  // ПРЕДОХРАНИТЕЛЬ: Отфильтровываем undefined зоны, чтобы код не падал
                   zones.filter(Boolean).forEach(zone => {
                       const div = document.createElement('div');
                       div.className = 'suggestion-item';
@@ -604,7 +569,6 @@
     });
   }
 
-  // --- МЕЖГОРОДСКОЙ ВВОД ---
   function setupIntercitySuggest() {
     const input = document.getElementById('interInput');
     const list = document.getElementById('interList');
@@ -647,7 +611,7 @@
             if(list.innerHTML !== "") list.style.display = 'block';
           }
         } catch(e) { 
-           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой сервера DaData.</div>`;
+           list.innerHTML = `<div style="padding:16px; color:#ef5350; font-size:13px; text-align:center;">⚠️ Сбой сети / API.</div>`;
            list.style.display = 'block';
         }
       }, 500);
@@ -727,7 +691,6 @@
     if (optId === 'optMinivan') state.minivan = !state.minivan;
   }
 
-  // --- РАСЧЕТ ПО ГОРОДУ ---
   function calculateCity() {
     const card = document.getElementById('resultCard');
     if (!state.from || !state.to) { alert("Выберите начальный и конечный район (кнопка 📋 или подсказка)"); return; }
@@ -779,7 +742,7 @@
     card.style.display = 'block';
   }
 
-  // --- РАСЧЕТ МЕЖГОРОД ---
+  // --- РАСЧЕТ МЕЖГОРОД (ТОЧНЫЕ КООРДИНАТЫ ПОДАЧИ) ---
   async function calculateIntercity() {
     if(!intercityData.lat || !intercityData.lon) {
         alert("Выберите конечный пункт из выпадающего списка!");
@@ -790,11 +753,20 @@
     const card = document.getElementById('resultCard');
     btn.innerText = "Считаем маршрут...";
     
+    const selectEl = document.getElementById('intercityOrigin');
+    const originVal = selectEl.value.split(',');
+    const originLat = originVal[0];
+    const originLon = originVal[1];
+    const originText = selectEl.options[selectEl.selectedIndex].text;
+    const shortOrigin = originText.split('(')[0].trim();
+    
     let destNameLC = intercityData.addressName.toLowerCase();
     let matchedPrice = 0;
     
+    // Строгая проверка по целым словам (чтобы Кабанский район не считался Кабанском)
     for (let key in INTERCITY_PRICES) {
-        if (destNameLC.includes(key)) {
+        let regex = new RegExp(`(^|[^а-яё])` + key + `([^а-яё]|$)`, 'i');
+        if (regex.test(destNameLC)) {
             matchedPrice = INTERCITY_PRICES[key];
             break;
         }
@@ -802,17 +774,9 @@
 
     let minivanAdd = state.minivan ? 500 : 0;
     
-    if (matchedPrice > 0) {
-        card.innerHTML = `<div class="route-title">Центр (Ленина, 61) <br>⬇<br> ${intercityData.addressName}</div>
-                          <div class="price-tag">${matchedPrice + minivanAdd} ₽</div>
-                          <div class="modifiers-list">Фиксированный тариф<br>${state.minivan ? '🚐 Минивэн (+500₽)' : ''}</div>`;
-        card.style.display = 'block';
-        btn.innerText = "РАССЧИТАТЬ МЕЖГОРОД";
-        return;
-    }
-
     try {
-        const url = `https://router.project-osrm.org/route/v1/driving/${ORIGIN_LON},${ORIGIN_LAT};${intercityData.lon},${intercityData.lat}?overview=false`;
+        // Прокладываем точный маршрут через бесплатный OSRM
+        const url = `https://router.project-osrm.org/route/v1/driving/${originLon},${originLat};${intercityData.lon},${intercityData.lat}?overview=false`;
         const res = await fetch(url);
         const data = await res.json();
         
@@ -822,23 +786,42 @@
         
         const distKm = data.routes[0].distance / 1000;
         let finalPrice = 0;
+        let note = "";
         
-        if (distKm <= 100) {
-            finalPrice = Math.round(distKm * 40);
+        // Если есть фикс-прайс, используем его, но все равно показываем реальный пробег
+        if (matchedPrice > 0) {
+            finalPrice = matchedPrice;
+            note = `Фиксированный тариф<br>Расстояние: ~${distKm.toFixed(1)} км`;
         } else {
-            finalPrice = Math.round(distKm * 37);
+            if (distKm <= 100) {
+                finalPrice = Math.round(distKm * 40);
+                note = `Расстояние: ${distKm.toFixed(1)} км<br>Тариф: 40 ₽/км`;
+            } else {
+                finalPrice = Math.round(distKm * 37);
+                note = `Расстояние: ${distKm.toFixed(1)} км<br>Тариф: 37 ₽/км`;
+            }
+            finalPrice = Math.round(finalPrice / 10) * 10;
         }
         
-        finalPrice = Math.round(finalPrice / 10) * 10;
+        if (state.minivan) note += "<br>🚐 Минивэн (+500₽)";
         
-        card.innerHTML = `<div class="route-title">Центр (Ленина, 61) <br>⬇<br> ${intercityData.addressName}</div>
+        card.innerHTML = `<div class="route-title">${shortOrigin} <br>⬇<br> ${intercityData.addressName}</div>
                           <div class="price-tag">${finalPrice + minivanAdd} ₽</div>
-                          <div class="modifiers-list">Расстояние: ${distKm.toFixed(1)} км<br>Тариф: ${distKm <= 100 ? '40' : '37'} ₽/км<br>${state.minivan ? '🚐 Минивэн (+500₽)' : ''}</div>`;
+                          <div class="modifiers-list">${note}</div>`;
         card.style.display = 'block';
 
     } catch (e) {
-        card.innerHTML = `<div class="error-msg">Не удалось проложить автомобильный маршрут. Уточните адрес.</div>`;
-        card.style.display = 'block';
+        // Если навигатор отвалился, но есть фикс-прайс - выдаем его. Иначе ошибку.
+        if (matchedPrice > 0) {
+            let note = `Фиксированный тариф${state.minivan ? '<br>🚐 Минивэн (+500₽)' : ''}`;
+            card.innerHTML = `<div class="route-title">${shortOrigin} <br>⬇<br> ${intercityData.addressName}</div>
+                              <div class="price-tag">${matchedPrice + minivanAdd} ₽</div>
+                              <div class="modifiers-list">${note}</div>`;
+            card.style.display = 'block';
+        } else {
+            card.innerHTML = `<div class="error-msg">Не удалось проложить автомобильный маршрут. Уточните адрес.</div>`;
+            card.style.display = 'block';
+        }
     } finally {
         btn.innerText = "РАССЧИТАТЬ МЕЖГОРОД";
     }
