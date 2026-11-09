@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taxi-cache-v9';
+const CACHE_NAME = 'taxi-cache-v11';
 const urlsToCache = [
   './index.html',
   './manifest.json',
